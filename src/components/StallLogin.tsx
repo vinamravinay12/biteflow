@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { Stall } from '../types';
 
@@ -10,8 +10,18 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [currentStalls, setCurrentStalls] = useState<Stall[]>([]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Load current stalls for testing links on mount
+  useEffect(() => {
+    const fetchStalls = async () => {
+      const list = await db.getStalls();
+      setCurrentStalls(list);
+    };
+    fetchStalls();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
@@ -20,7 +30,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    const stalls = db.getStalls();
+    const stalls = await db.getStalls();
     const stall = stalls.find(
       s => s.ownerUsername.toLowerCase() === username.trim().toLowerCase() &&
            s.ownerPassword === password.trim()
@@ -34,16 +44,14 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickLogin = (uname: string) => {
-    const stalls = db.getStalls();
+  const handleQuickLogin = async (uname: string) => {
+    const stalls = await db.getStalls();
     const stall = stalls.find(s => s.ownerUsername === uname);
     if (stall) {
       db.setActiveStall(stall);
       onLoginSuccess(stall);
     }
   };
-
-  const currentStalls = db.getStalls();
 
   return (
     <div style={{ maxWidth: '480px', margin: '4rem auto 2rem', padding: '1.5rem' }}>
@@ -66,7 +74,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
             <input
               type="text"
               className="input-field"
-              placeholder="e.g. burger"
+              placeholder="e.g. burger_junction"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               style={{ textTransform: 'lowercase' }}
@@ -109,6 +117,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
             {currentStalls.map(s => (
               <button 
                 key={s.id} 
+                type="button"
                 onClick={() => handleQuickLogin(s.ownerUsername)}
                 className="btn btn-secondary" 
                 style={{ 
@@ -131,7 +140,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
 
         <div style={{ textAlign: 'center', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)', marginTop: '1.5rem' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Need a new merchant account? Log into the **Super Admin Portal** to generate credentials.
+            Need a new merchant account? Log into the **Platform Admin Portal** to generate credentials.
           </p>
         </div>
       </div>

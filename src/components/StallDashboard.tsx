@@ -62,14 +62,14 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   ];
 
   // Load data
-  const loadData = () => {
+  const loadData = async () => {
     // Load menu items for this stall
-    const allItems = db.getMenuItems();
+    const allItems = await db.getMenuItems();
     const stallItems = allItems.filter(item => item.stallId === stall.id);
     setMenuItems(stallItems);
 
     // Load orders for this stall
-    const allOrders = db.getOrders();
+    const allOrders = await db.getOrders();
     const stallOrders = allOrders.filter(order => order.stallId === stall.id);
     setOrders(stallOrders);
 
@@ -96,23 +96,23 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   }, [stall.id]);
 
   // Order status actions
-  const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
-    const success = db.updateOrderStatus(orderId, newStatus);
+  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
+    const success = await db.updateOrderStatus(orderId, newStatus);
     if (success) {
       // If we are cancelling, refund customer
       if (newStatus === 'cancelled') {
         const order = orders.find(o => o.id === orderId);
         if (order) {
-          db.refundWalletFunds(
+          await db.refundWalletFunds(
             order.totalAmount,
             `Refund: Order #${order.id} cancelled by ${stall.name}`
           );
         }
       }
-      loadData();
+      await loadData();
     }
   };
-  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassError('');
     setPassSuccess('');
@@ -137,7 +137,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
       return;
     }
 
-    const success = db.changeStallPassword(stall.id, newPasswordInput);
+    const success = await db.changeStallPassword(stall.id, newPasswordInput);
     if (success) {
       setPassSuccess('Password updated successfully!');
       setCurrentPasswordInput('');
@@ -178,7 +178,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   };
 
   // Handle submit menu item
-  const handleSubmitMenu = (e: React.FormEvent) => {
+  const handleSubmitMenu = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -212,10 +212,10 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         isAvailable: itemAvailable
       };
       
-      const success = db.updateMenuItem(updated);
+      const success = await db.updateMenuItem(updated);
       if (success) {
         setIsMenuModalOpen(false);
-        loadData();
+        await loadData();
       } else {
         setFormError('Failed to update menu item.');
       }
@@ -234,23 +234,23 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         isAvailable: itemAvailable
       };
 
-      db.addMenuItem(newItem);
+      await db.addMenuItem(newItem);
       setIsMenuModalOpen(false);
-      loadData();
+      await loadData();
     }
   };
 
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = async (itemId: string) => {
     if (window.confirm('Are you sure you want to delete this menu item?')) {
-      db.deleteMenuItem(itemId);
-      loadData();
+      await db.deleteMenuItem(itemId);
+      await loadData();
     }
   };
 
-  const toggleItemAvailability = (item: MenuItem) => {
+  const toggleItemAvailability = async (item: MenuItem) => {
     const updated = { ...item, isAvailable: !item.isAvailable };
-    db.updateMenuItem(updated);
-    loadData();
+    await db.updateMenuItem(updated);
+    await loadData();
   };
 
   // Filtered orders

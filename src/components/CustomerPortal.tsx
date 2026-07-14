@@ -3,8 +3,14 @@ import { db } from '../utils/database';
 import type { Stall, MenuItem, Order, UserWallet, OrderItem } from '../types';
 import { 
   Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock, 
-  History, Sparkles, ChevronRight, Info, CheckCircle, Store, X 
+  History, Sparkles, ChevronRight, Info, CheckCircle, Store, X
+  // LogOut, User, Lock, Mail
 } from 'lucide-react';
+// import { auth } from '../utils/firebase';
+// import { 
+//   onAuthStateChanged, signInWithEmailAndPassword, 
+//   createUserWithEmailAndPassword, signOut, updateProfile 
+// } from 'firebase/auth';
 
 interface CustomerPortalProps {
   onBackToAdmin?: () => void;
@@ -38,16 +44,25 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const categories = ['all', 'Burgers', 'Mexican', 'Noodles', 'Rice Bowls', 'Mains', 'Sides', 'Dessert', 'Beverage'];
 
   // Load database values
-  const loadData = () => {
-    setStalls(db.getStalls());
-    setMenuItems(db.getMenuItems());
-    setWallet(db.getWallet());
-    
-    const allOrders = db.getOrders();
-    // Filter orders belonging to current customer
-    const customerName = db.getCustomerName();
-    const customerOrders = allOrders.filter(o => o.customerName === customerName);
-    setActiveOrders(customerOrders);
+  const loadData = async () => {
+    try {
+      const [fetchedStalls, fetchedItems, fetchedWallet, allOrders] = await Promise.all([
+        db.getStalls(),
+        db.getMenuItems(),
+        db.getWallet(),
+        db.getOrders()
+      ]);
+
+      setStalls(fetchedStalls);
+      setMenuItems(fetchedItems);
+      setWallet(fetchedWallet);
+      
+      const customerName = db.getCustomerName();
+      const customerOrders = allOrders.filter(o => o.customerName === customerName);
+      setActiveOrders(customerOrders);
+    } catch (e) {
+      console.error("Failed to load customer hub data:", e);
+    }
   };
 
   useEffect(() => {
@@ -90,13 +105,13 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const cartTotal = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
 
   // Top Up Wallet
-  const handleTopUp = (amount: number) => {
+  const handleTopUp = async (amount: number) => {
     setLoadingFunds(true);
     setLoadAmount(amount);
     
     // Simulate payment processing delay
-    setTimeout(() => {
-      const updatedWallet = db.loadWalletFunds(amount);
+    setTimeout(async () => {
+      const updatedWallet = await db.loadWalletFunds(amount);
       setWallet(updatedWallet);
       setLoadingFunds(false);
       setLoadAmount(null);
@@ -104,7 +119,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   };
 
   // Checkout
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (wallet.balance < cartTotal) {
       alert('Insufficient wallet balance! Please add funds to your wallet.');
@@ -151,11 +166,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     });
 
     // Save orders in database
-    db.addOrders(newOrders);
+    await db.addOrders(newOrders);
 
     // Deduct wallet funds
     const description = `Multi-stall food purchase (${newOrders.map(o => o.stallName).join(', ')})`;
-    db.deductWalletFunds(cartTotal, description);
+    await db.deductWalletFunds(cartTotal, description);
 
     // Record last order for success modal
     setLastOrderDetails({
@@ -170,7 +185,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     setShowSuccessModal(true);
     
     // Refresh local lists
-    loadData();
+    await loadData();
   };
 
   // Filter items

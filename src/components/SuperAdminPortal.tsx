@@ -59,14 +59,14 @@ export const SuperAdminPortal: React.FC = () => {
 
   const emojis = ['🍔', '🍕', '🌮', '🥢', '🍦', '🍩', '🥗', '☕', '🥤', '🍛', '🥞', '🥐'];
 
-  const loadData = () => {
-    const allStalls = db.getStalls();
+  const loadData = async () => {
+    const allStalls = await db.getStalls();
     setStalls(allStalls);
 
-    const allItems = db.getMenuItems();
+    const allItems = await db.getMenuItems();
     setTotalItems(allItems.length);
 
-    const allOrders = db.getOrders();
+    const allOrders = await db.getOrders();
     setTotalOrders(allOrders.length);
   };
 
@@ -111,7 +111,7 @@ export const SuperAdminPortal: React.FC = () => {
     setOwnerPassword(`${adj}-${noun}-${num}`);
   };
 
-  const handleRegisterStall = (e: React.FormEvent) => {
+  const handleRegisterStall = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -121,7 +121,7 @@ export const SuperAdminPortal: React.FC = () => {
       return;
     }
 
-    const currentStalls = db.getStalls();
+    const currentStalls = await db.getStalls();
     const exists = currentStalls.some(
       s => s.ownerUsername.toLowerCase() === ownerUsername.trim().toLowerCase()
     );
@@ -143,7 +143,7 @@ export const SuperAdminPortal: React.FC = () => {
       active: true
     };
 
-    db.addStall(newStall);
+    await db.addStall(newStall);
     setSuccess(`Successfully created Stall "${stallName}"! Username and Password generated.`);
     
     // Clear form
@@ -152,15 +152,15 @@ export const SuperAdminPortal: React.FC = () => {
     setOwnerUsername('');
     setOwnerPassword('');
     
-    loadData();
+    await loadData();
   };
 
-  const handleDeleteStall = (stallId: string, name: string) => {
+  const handleDeleteStall = async (stallId: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete the stall "${name}"? This will delete all its configuration.`)) {
-      const allStalls = db.getStalls();
+      const allStalls = await db.getStalls();
       const updated = allStalls.filter(s => s.id !== stallId);
-      db.saveStalls(updated);
-      loadData();
+      await db.saveStalls(updated);
+      await loadData();
     }
   };
 
@@ -171,16 +171,16 @@ export const SuperAdminPortal: React.FC = () => {
     }));
   };
 
-  const toggleStallStatus = (stallId: string) => {
-    const allStalls = db.getStalls();
+  const toggleStallStatus = async (stallId: string) => {
+    const allStalls = await db.getStalls();
     const updated = allStalls.map(s => {
       if (s.id === stallId) {
         return { ...s, active: !s.active };
       }
       return s;
     });
-    db.saveStalls(updated);
-    loadData();
+    await db.saveStalls(updated);
+    await loadData();
   };
 
   if (!isAdminLoggedIn) {
