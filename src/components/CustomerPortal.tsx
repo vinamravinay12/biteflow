@@ -3,14 +3,14 @@ import { db } from '../utils/database';
 import type { Stall, MenuItem, Order, UserWallet, OrderItem } from '../types';
 import { 
   Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock, 
-  History, Sparkles, ChevronRight, Info, CheckCircle, Store, X
-  // LogOut, User, Lock, Mail
+  History, Sparkles, ChevronRight, Info, CheckCircle, Store, X,
+  LogOut, User, Lock, Mail
 } from 'lucide-react';
-// import { auth } from '../utils/firebase';
-// import { 
-//   onAuthStateChanged, signInWithEmailAndPassword, 
-//   createUserWithEmailAndPassword, signOut, updateProfile 
-// } from 'firebase/auth';
+import { auth } from '../utils/firebase';
+import { 
+  onAuthStateChanged, signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, signOut, updateProfile 
+} from 'firebase/auth';
 
 interface CustomerPortalProps {
   onBackToAdmin?: () => void;
@@ -21,6 +21,15 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [wallet, setWallet] = useState<UserWallet>({ username: 'Alex Mercer', balance: 0, transactions: [] });
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+
+  // Authentication State
+  const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authDisplayName, setAuthDisplayName] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,12 +74,136 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     }
   };
 
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    if (auth) {
+      try {
+        if (authMode === 'login') {
+          const userCredential = await signInWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+          const name = userCredential.user.displayName || userCredential.user.email || 'Customer';
+          db.setCustomerName(name);
+          setUser({ email: userCredential.user.email || '', displayName: name });
+        } else {
+          if (!authDisplayName.trim()) {
+            setAuthError('Please enter your full name.');
+            setAuthLoading(false);
+            return;
+          }
+          const userCredential = await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+          await updateProfile(userCredential.user, { displayName: authDisplayName.trim() });
+          db.setCustomerName(authDisplayName.trim());
+          setUser({ email: userCredential.user.email || '', displayName: authDisplayName.trim() });
+        }
+        await loadData();
+      } catch (err: any) {
+        console.error("Firebase auth error:", err);
+        setAuthError(err.message || 'Authentication failed. Please check your credentials.');
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      try {
+        const users = JSON.parse(localStorage.getItem('foodcourt_sandbox_users') || '[]');
+        if (authMode === 'login') {
+          const found = users.find((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase() && u.password === authPassword);
+          if (found) {
+            localStorage.setItem('sandbox_logged_in_user', JSON.stringify(found));
+            db.setCustomerName(found.displayName);
+            setUser(found);
+            await loadData();
+          } else {
+            setAuthError('Invalid email or password. Sign up first!');
+          }
+        } else {
+          if (!authDisplayName.trim()) {
+            setAuthError('Please enter your full name.');
+            setAuthLoading(false);
+            return;
+          }
+          const exists = users.some((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase());
+          if (exists) {
+            setAuthError('Email already registered.');
+            setAuthLoading(false);
+            return;
+          }
+          const newUser = {
+            email: authEmail.trim(),
+            password: authPassword,
+            displayName: authDisplayName.trim()
+          };
+          users.push(newUser);
+          localStorage.setItem('foodcourt_sandbox_users', JSON.stringify(users));
+          localStorage.setItem('sandbox_logged_in_user', JSON.stringify(newUser));
+          db.setCustomerName(newUser.displayName);
+          setUser(newUser);
+          await loadData();
+        }
+      } catch (err: any) {
+        setAuthError('Sandbox authentication failed.');
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    if (auth) {
+      try {
+        await signOut(auth);
+        setUser(null);
+      } catch (err) {
+        console.error("Firebase logout failed:", err);
+      }
+    } else {
+      localStorage.removeItem('sandbox_logged_in_user');
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    if (auth) {
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
+        if (firebaseUser) {
+          const name = firebaseUser.displayName || firebaseUser.email || 'Customer';
+          db.setCustomerName(name);
+          setUser({ email: firebaseUser.email || '', displayName: name });
+        } else {
+          setUser(null);
+        }
+      });
+    } else {
+      const savedUser = localStorage.getItem('sandbox_logged_in_user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          db.setCustomerName(parsed.displayName);
+          setUser(parsed);
+        } catch (e) {
+          localStorage.removeItem('sandbox_logged_in_user');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Poll for updates only if user is logged in
+  useEffect(() => {
+    if (!user) return;
     loadData();
-    // Poll for order status updates from the Stall Admin side
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   // Cart operations
   const addToCart = (item: MenuItem) => {
@@ -209,6 +342,165 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     }
   };
 
+  if (!user) {
+    return (
+      <div style={{ maxWidth: '460px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
+        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px' }}>
+          
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <span style={{ fontSize: '3rem' }}>🍔</span>
+            <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
+              BiteFlow Customer Hub
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              {auth ? 'Firebase Authentication Mode' : 'Sandbox LocalStorage Mode'}
+            </p>
+          </div>
+
+          {/* Tabs for Login / Register */}
+          <div style={{ display: 'flex', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.25rem', marginBottom: '1.5rem' }}>
+            <button 
+              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: authMode === 'login' ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'transparent',
+                color: authMode === 'login' ? 'white' : 'var(--text-secondary)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Sign In
+            </button>
+            <button 
+              onClick={() => { setAuthMode('register'); setAuthError(''); }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: authMode === 'register' ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'transparent',
+                color: authMode === 'register' ? 'white' : 'var(--text-secondary)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          {authError && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              padding: '0.75rem',
+              color: '#f87171',
+              fontSize: '0.8rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <Info size={14} />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {authMode === 'register' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name</label>
+                <div style={{ position: 'relative' }}>
+                  <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Alex Mercer"
+                    value={authDisplayName}
+                    onChange={(e) => setAuthDisplayName(e.target.value)}
+                    style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                <input
+                  type="email"
+                  required
+                  placeholder="name@campus.edu"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontWeight: 600,
+                marginTop: '0.5rem',
+                background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                border: 'none',
+                color: 'white',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {authLoading ? (
+                <span>Loading...</span>
+              ) : (
+                <span>{authMode === 'login' ? 'Sign In' : 'Create Account'}</span>
+              )}
+            </button>
+          </form>
+
+          {!auth && (
+            <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', textAlign: 'center' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                💡 Tip: Try signing in with any email (e.g. <code>test@test.com</code> / <code>password</code>) or create a new account to test Sandbox mode!
+              </p>
+            </div>
+          )}
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', animation: 'slide-up 0.4s ease' }}>
       
@@ -232,8 +524,28 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Campus Food Court <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>Simulator</span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-            Welcome back, <strong>{wallet.username}</strong>! Order from multiple food stalls in a single transaction.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            Welcome back, <strong>{user?.displayName || wallet.username}</strong>! Order from multiple food stalls in a single transaction.
+            <button 
+              onClick={handleLogout}
+              style={{
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                fontSize: '0.75rem',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '6px',
+                marginLeft: '0.5rem',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                background: 'rgba(239, 68, 68, 0.05)',
+                fontWeight: 600,
+                transition: 'all 0.2s'
+              }}
+            >
+              <LogOut size={12} /> Sign Out
+            </button>
           </p>
         </div>
 
