@@ -1,29 +1,187 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall, MenuItem, Order, UserWallet, OrderItem } from '../types';
-import { 
-  Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock, 
-  History, Sparkles, ChevronRight, Info, CheckCircle, Store, X,
-  LogOut, User, Lock, Mail
+import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, KioskOrderEntry, UserWallet, Match } from '../types';
+import {
+  Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock,
+  History, Sparkles, ChevronRight, Info, CheckCircle, X,
+  LogOut, User, Lock, Mail, Calendar
 } from 'lucide-react';
 import { auth } from '../utils/firebase';
-import { 
-  onAuthStateChanged, signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, signOut, updateProfile 
+import {
+  onAuthStateChanged, signInWithEmailAndPassword,
+  createUserWithEmailAndPassword, signOut, updateProfile
 } from 'firebase/auth';
 
 interface CustomerPortalProps {
   onBackToAdmin?: () => void;
 }
 
+interface AuthedUser {
+  uid: string;
+  email: string;
+  displayName: string;
+}
+
+// This customer's own slice of a (possibly multi-kiosk) order, flattened for display.
+interface KioskOrderView {
+  orderId: string;
+  kioskId: string;
+  kioskName: string;
+  items: OrderLineItem[];
+  subtotal: number;
+  status: OrderStatus;
+}
+
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: string;
+  suggestedItems?: MenuItem[];
+  showCheckoutAction?: boolean;
+}
+
+const TRANSLATIONS = {
+  en: {
+    greeting: "Hello! I am your BiteFlow AI Concierge. I can help you search, browse, and order food from stadium kiosks. Ask me what you'd like (e.g., 'I want a taco' or 'show burgers')!",
+    noItems: "I couldn't find any items matching your request in the kiosks active for this match. Could you try something else?",
+    foundItems: "Here are the items I found for you. You can add them directly to your cart:",
+    askQuantity: (name: string) => `How many of "${name}" would you like to order?`,
+    confirmed: (qty: number, name: string) => `Added ${qty}x "${name}" to your cart!`,
+    help: "You can ask me to search for tacos, burgers, wok, noodles, desserts, or specific stalls. I reply in Spanish, Portuguese, French, Italian, and English!",
+    invalidQty: "Please specify a valid quantity."
+  },
+  es: {
+    greeting: "¡Hola! Soy tu asistente BiteFlow AI. Puedo ayudarte a buscar y pedir comida de los puestos del estadio. ¡Dime qué te gustaría (ej. 'quiero un taco' o 'mostrar hamburguesas')!",
+    noItems: "No encontré ningún artículo que coincida con tu solicitud en los puestos activos para este partido. ¿Podrías intentar algo más?",
+    foundItems: "Aquí están los artículos que encontré para ti. Puedes agregarlos directamente a tu carrito:",
+    askQuantity: (name: string) => `¿Cuántos de "${name}" te gustaría pedir?`,
+    confirmed: (qty: number, name: string) => `¡Agregado ${qty}x "${name}" a tu carrito!`,
+    help: "Puedes pedirme que busque tacos, hamburguesas, wok, fideos, postres o puestos específicos. ¡Respondo en español, portugués, francés, italiano e inglés!",
+    invalidQty: "Por favor, especifica una cantidad válida."
+  },
+  pt: {
+    greeting: "Olá! Sou o seu assistente BiteFlow AI. Posso ajudar você a procurar e pedir comida das barracas do estádio. Diga-me o que deseja (ex. 'quero um taco' ou 'mostrar hambúrgueres')!",
+    noItems: "Não encontrei nenhum item correspondente ao seu pedido nas barracas ativas para este jogo. Poderia tentar outra coisa?",
+    foundItems: "Aqui estão os itens que encontrei para você. Você pode adicioná-los diretamente ao carrinho:",
+    askQuantity: (name: string) => `Quantos de "${name}" você gostaria de pedir?`,
+    confirmed: (qty: number, name: string) => `Adicionado ${qty}x "${name}" ao seu carrinho!`,
+    help: "Você pode me pedir para procurar tacos, hambúrgueres, wok, macarrão, sobremesas ou barracas específicas. Respondo em espanhol, português, francês, italiano e inglês!",
+    invalidQty: "Por favor, especifique uma quantidade válida."
+  },
+  fr: {
+    greeting: "Bonjour ! Je suis votre assistant BiteFlow AI. Je peux vous aider à rechercher et à commander de la nourriture dans les kiosques du stade. Dites-moi ce que vous voulez (ex. 'je veux un taco' ou 'afficher des burgers')!",
+    noItems: "Je n'y ai trouvé aucun article correspondant à votre demande dans les kiosques actifs pour ce match. Pourriez-vous essayer autre chose ?",
+    foundItems: "Voici les articles que j'ai trouvés pour vous. Vous pouvez les ajouter directement à votre panier :",
+    askQuantity: (name: string) => `Combien de "${name}" souhaitez-vous commander ?`,
+    confirmed: (qty: number, name: string) => `Ajouté ${qty}x "${name}" à votre panier !`,
+    help: "Vous pouvez me demander de rechercher des tacos, des burgers, des woks, des nouilles, des desserts ou des kiosques spécifiques. Je réponds en espagnol, portugais, français, italien et anglais !",
+    invalidQty: "Veuillez spécifier une quantité valide."
+  },
+  it: {
+    greeting: "Ciao! Sono il tuo assistente BiteFlow AI. Posso aiutarti a cercare e ordinare cibo dai chioschi dello stadio. Dimmi cosa desideri (es. 'voglio un taco' o 'mostra hamburger')!",
+    noItems: "Non ho trovato articoli corrispondenti alla tua richiesta nei chioschi attivi per questa partita. Potresti provare qualcos'altro?",
+    foundItems: "Ecco gli articoli che ho trovato per te. Puoi aggiungerli direttamente al carrello:",
+    askQuantity: (name: string) => `Quanti di "${name}" vorresti ordinare?`,
+    confirmed: (qty: number, name: string) => `Aggiunto ${qty}x "${name}" al tuo carrello!`,
+    help: "Puoi chiedermi di cercare taco, hamburger, wok, spaghetti, dolci o chioschi specifici. Rispondo in spagnolo, portoghese, francese, italiano e inglese!",
+    invalidQty: "Si prega di specificare una quantità valida."
+  }
+};
+
+const detectLanguage = (text: string): 'en' | 'es' | 'pt' | 'fr' | 'it' => {
+  const t = text.toLowerCase();
+  if (t.includes('quiero') || t.includes('pedir') || t.includes('hamburguesa') || t.includes('hola') || t.includes('comida') || t.includes('tacos') || t.includes('por favor') || t.includes('gracias') || t.includes('que tal')) {
+    return 'es';
+  }
+  if (t.includes('olá') || t.includes('gostaria') || t.includes('hambúrguer') || t.includes('doce') || t.includes('obrigado') || t.includes('cardápio')) {
+    return 'pt';
+  }
+  if (t.includes('bonjour') || t.includes('veux') || t.includes('commander') || t.includes('s\'il vous plaît') || t.includes('nouilles') || t.includes('dessert') || t.includes('merci')) {
+    return 'fr';
+  }
+  if (t.includes('ciao') || t.includes('vorrei') || t.includes('ordinare') || t.includes('per favore') || t.includes('dolce') || t.includes('grazie')) {
+    return 'it';
+  }
+  return 'en';
+};
+
+const getMatchingItems = (text: string, items: MenuItem[]): MenuItem[] => {
+  const t = text.toLowerCase();
+  const matchTaco = t.includes('taco') || t.includes('quesadilla') || t.includes('guacamole') || t.includes('mexic') || t.includes('burrito');
+  const matchBurger = t.includes('burger') || t.includes('hamburg') || t.includes('fries') || t.includes('papas') || t.includes('frites') || t.includes('patatine');
+  const matchWok = t.includes('wok') || t.includes('noodle') || t.includes('fideo') || t.includes('macarr') || t.includes('nouille') || t.includes('spaghett') || t.includes('dumpling') || t.includes('asian');
+  const matchSweet = t.includes('sweet') || t.includes('waffle') || t.includes('gelato') || t.includes('ice') || t.includes('helado') || t.includes('sorvete') || t.includes('glace') || t.includes('bubble') || t.includes('shake') || t.includes('doce') || t.includes('dessert') || t.includes('postre') || t.includes('dolce');
+
+  return items.filter(item => {
+    const itemStallId = item.stallId;
+    if (matchTaco && itemStallId === 'stall-taco') return true;
+    if (matchBurger && itemStallId === 'stall-burger') return true;
+    if (matchWok && itemStallId === 'stall-wok') return true;
+    if (matchSweet && itemStallId === 'stall-sweet') return true;
+    
+    return item.name.toLowerCase().includes(t) || 
+           item.category.toLowerCase().includes(t) || 
+           item.description.toLowerCase().includes(t);
+  });
+};
+
+const CHAT_FLOW_TRANSLATIONS = {
+  en: {
+    moreQuestion: "Is this enough or would you like to order more?",
+    askPayment: "Here is your order summary. Should I proceed with the payment?",
+    doneKeywords: ['done', "that's it", 'no more', 'enough', 'checkout', 'pay', 'ready', 'no thank', 'nothing else', 'no', 'finished', 'stop'],
+    invalidSeating: "Please specify your Stand / Section and Seat Number in the form below before payment."
+  },
+  es: {
+    moreQuestion: "¿Es esto suficiente o te gustaría pedir algo más?",
+    askPayment: "Aquí está el resumen de tu pedido. ¿Procedo con el pago?",
+    doneKeywords: ['listo', 'ya está', 'suficiente', 'nada más', 'pagar', 'terminar', 'no gracias', 'no', 'nada mas', 'terminado', 'hecho'],
+    invalidSeating: "Por favor, especifica tu Tribuna/Sección y Número de asiento en el formulario a continuación antes de pagar."
+  },
+  pt: {
+    moreQuestion: "Isto é suficiente ou gostaria de pedir mais?",
+    askPayment: "Aqui está o resumo do seu pedido. Devo proceder com o pagamento?",
+    doneKeywords: ['pronto', 'chega', 'suficiente', 'nada mais', 'pagar', 'fechar', 'não obrigado', 'nao', 'não', 'nada mais', 'terminado'],
+    invalidSeating: "Por favor, especifique o seu Setor/Tribuna e Número do assento no formulário abaixo antes do pagamento."
+  },
+  fr: {
+    moreQuestion: "Est-ce suffisant ou souhaitez-vous commander autre chose?",
+    askPayment: "Voici le récapulitatif de votre commande. Dois-je procéder au paiement?",
+    doneKeywords: ['fini', "c'est tout", 'assez', 'payer', 'terminer', 'non merci', 'non', 'rien d\'autre', 'payer'],
+    invalidSeating: "Veuillez spécifier votre Tribune/Section et Numéro de siège dans le formulaire ci-dessous avant le paiement."
+  },
+  it: {
+    moreQuestion: "È sufficiente o vorresti ordinare altro?",
+    askPayment: "Ecco il riepilogo del tuo ordine. Procedo con il pagamento?",
+    doneKeywords: ['finito', 'a posto', 'abbastanza', 'pagare', 'nient\'altro', 'no grazie', 'no', 'niente altro', 'pronto'],
+    invalidSeating: "Si prega di specificare il Settore/Tribuna e il Numero di posto nel modulo sottostante prima del pagamento."
+  }
+};
+
 export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [stalls, setStalls] = useState<Stall[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [wallet, setWallet] = useState<UserWallet>({ username: 'Alex Mercer', balance: 0, transactions: [] });
-  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  const [wallet, setWallet] = useState<UserWallet>({ uid: '', balance: 0, transactions: [] });
+  const [activeOrders, setActiveOrders] = useState<KioskOrderView[]>([]);
+
+  // Delivery & Match states
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [selectedMatchId, setSelectedMatchId] = useState<string>('');
+  const [standName, setStandName] = useState<string>('');
+  const [seatNumber, setSeatNumber] = useState<string>('');
+  const [hasSubmittedMatchDetails, setHasSubmittedMatchDetails] = useState<boolean>(false);
+
+  // AI Concierge Chat states
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [aiTyping, setAiTyping] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ item: MenuItem; quantity: number; lang: 'en' | 'es' | 'pt' | 'fr' | 'it' } | null>(null);
+  const [showVisualMenu, setShowVisualMenu] = useState(false);
+  const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
   // Authentication State
-  const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
+  const [user, setUser] = useState<AuthedUser | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -55,23 +213,43 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   // Load database values
   const loadData = async () => {
     try {
-      const [fetchedStalls, fetchedItems, fetchedWallet, allOrders] = await Promise.all([
+      const customerUid = db.getCustomerUid();
+      const [fetchedStalls, fetchedItems, fetchedWallet, myOrders, fetchedMatches] = await Promise.all([
         db.getStalls(),
         db.getMenuItems(),
-        db.getWallet(),
-        db.getOrders()
+        db.getWallet(customerUid),
+        db.getOrders(customerUid),
+        db.getMatches()
       ]);
 
       setStalls(fetchedStalls);
       setMenuItems(fetchedItems);
       setWallet(fetchedWallet);
-      
-      const customerName = db.getCustomerName();
-      const customerOrders = allOrders.filter(o => o.customerName === customerName);
-      setActiveOrders(customerOrders);
+      setMatches(fetchedMatches);
+
+      // An order can span multiple kiosks; flatten to one card per kiosk slice.
+      const kioskViews: KioskOrderView[] = myOrders.flatMap(o =>
+        Object.values(o.kioskOrders).map(entry => ({
+          orderId: o.id,
+          kioskId: entry.kioskId,
+          kioskName: entry.kioskName,
+          items: entry.items,
+          subtotal: entry.subtotal,
+          status: entry.status
+        }))
+      );
+      setActiveOrders(kioskViews);
     } catch (e) {
       console.error("Failed to load customer hub data:", e);
     }
+  };
+
+  // Persists the resolved identity (uid + name) so every db.* call made
+  // elsewhere in this component reads/writes the right customer's data.
+  const applyCustomerIdentity = async (uid: string, name: string, email: string) => {
+    db.setCustomerUid(uid);
+    db.setCustomerName(name);
+    await db.ensureUserProfile(uid, 'customer', email, name);
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -84,8 +262,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         if (authMode === 'login') {
           const userCredential = await signInWithEmailAndPassword(auth, authEmail.trim(), authPassword);
           const name = userCredential.user.displayName || userCredential.user.email || 'Customer';
-          db.setCustomerName(name);
-          setUser({ email: userCredential.user.email || '', displayName: name });
+          const email = userCredential.user.email || '';
+          await applyCustomerIdentity(userCredential.user.uid, name, email);
+          setUser({ uid: userCredential.user.uid, email, displayName: name });
         } else {
           if (!authDisplayName.trim()) {
             setAuthError('Please enter your full name.');
@@ -94,8 +273,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           }
           const userCredential = await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
           await updateProfile(userCredential.user, { displayName: authDisplayName.trim() });
-          db.setCustomerName(authDisplayName.trim());
-          setUser({ email: userCredential.user.email || '', displayName: authDisplayName.trim() });
+          const email = userCredential.user.email || '';
+          await applyCustomerIdentity(userCredential.user.uid, authDisplayName.trim(), email);
+          setUser({ uid: userCredential.user.uid, email, displayName: authDisplayName.trim() });
         }
         await loadData();
       } catch (err: any) {
@@ -110,8 +290,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         if (authMode === 'login') {
           const found = users.find((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase() && u.password === authPassword);
           if (found) {
+            if (!found.uid) {
+              found.uid = crypto.randomUUID();
+              localStorage.setItem('foodcourt_sandbox_users', JSON.stringify(users));
+            }
             localStorage.setItem('sandbox_logged_in_user', JSON.stringify(found));
-            db.setCustomerName(found.displayName);
+            await applyCustomerIdentity(found.uid, found.displayName, found.email);
             setUser(found);
             await loadData();
           } else {
@@ -130,6 +314,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             return;
           }
           const newUser = {
+            uid: crypto.randomUUID(),
             email: authEmail.trim(),
             password: authPassword,
             displayName: authDisplayName.trim()
@@ -137,7 +322,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           users.push(newUser);
           localStorage.setItem('foodcourt_sandbox_users', JSON.stringify(users));
           localStorage.setItem('sandbox_logged_in_user', JSON.stringify(newUser));
-          db.setCustomerName(newUser.displayName);
+          await applyCustomerIdentity(newUser.uid, newUser.displayName, newUser.email);
           setUser(newUser);
           await loadData();
         }
@@ -170,8 +355,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
         if (firebaseUser) {
           const name = firebaseUser.displayName || firebaseUser.email || 'Customer';
-          db.setCustomerName(name);
-          setUser({ email: firebaseUser.email || '', displayName: name });
+          const email = firebaseUser.email || '';
+          await applyCustomerIdentity(firebaseUser.uid, name, email);
+          setUser({ uid: firebaseUser.uid, email, displayName: name });
         } else {
           setUser(null);
         }
@@ -181,7 +367,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
-          db.setCustomerName(parsed.displayName);
+          if (!parsed.uid) {
+            parsed.uid = crypto.randomUUID();
+            localStorage.setItem('sandbox_logged_in_user', JSON.stringify(parsed));
+          }
+          applyCustomerIdentity(parsed.uid, parsed.displayName, parsed.email);
           setUser(parsed);
         } catch (e) {
           localStorage.removeItem('sandbox_logged_in_user');
@@ -205,18 +395,31 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Cart operations
-  const addToCart = (item: MenuItem) => {
+  // Initialize AI chatbot greeting
+  useEffect(() => {
+    if (hasSubmittedMatchDetails && user) {
+      const helloMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'ai',
+        text: TRANSLATIONS.en.greeting,
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages([helloMsg]);
+      setPendingConfirmation(null);
+    }
+  }, [hasSubmittedMatchDetails, user]);
+
+  const addToCart = (item: MenuItem, qty: number = 1) => {
     if (!item.isAvailable) return;
     setCart(prevCart => {
       const existing = prevCart.find(c => c.item.id === item.id);
       if (existing) {
-        return prevCart.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+        return prevCart.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + qty } : c);
       }
-      return [...prevCart, { item, quantity: 1 }];
+      return [...prevCart, { item, quantity: qty }];
     });
-    // Open sidebar automatically
-    setShowCart(true);
+    // Open sidebar automatically is disabled per user request
+    // setShowCart(true);
   };
 
   const updateCartQty = (itemId: string, amount: number) => {
@@ -235,6 +438,248 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     setCart(prevCart => prevCart.filter(c => c.item.id !== itemId));
   };
 
+  const handleAddFromChatCard = async (item: MenuItem) => {
+    addToCart(item, 1);
+    setAiTyping(true);
+
+    if (geminiApiKey.trim()) {
+      // Use Gemini to confirm in the user's language
+      try {
+        const confirmPrompt = `The user just added 1x "${item.name}" ($${item.price}) to their cart. Confirm this addition and ask if they want to order more or are done. Keep it short (1-2 sentences). Reply in the SAME language the conversation has been in so far.`;
+        const rawResponse = await callGeminiAPI(confirmPrompt, chatMessages, geminiApiKey);
+        let parsedText = rawResponse.replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '').replace('[SHOW_CHECKOUT]', '').trim();
+
+        const aiMsg: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          sender: 'ai',
+          text: parsedText,
+          timestamp: new Date().toISOString()
+        };
+        setChatMessages(prev => [...prev, aiMsg]);
+        setAiTyping(false);
+        return;
+      } catch (err) {
+        console.error('Gemini follow-up failed, using fallback:', err);
+      }
+    }
+
+    // Fallback for non-Gemini mode
+    const lastMsg = chatMessages[chatMessages.length - 1];
+    const lang = lastMsg ? detectLanguage(lastMsg.text) : 'en';
+    
+    setTimeout(() => {
+      const confirmText = TRANSLATIONS[lang].confirmed(1, item.name);
+      const moreQuestionText = CHAT_FLOW_TRANSLATIONS[lang].moreQuestion;
+      
+      const aiMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'ai',
+        text: `${confirmText} ${moreQuestionText}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      setChatMessages(prev => [...prev, aiMsg]);
+      setAiTyping(false);
+    }, 600);
+  };
+
+  const callGeminiAPI = async (text: string, history: ChatMessage[], apiKey: string): Promise<string> => {
+    const activeMenuInfo = filteredMenuItems.map(i => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      stallName: i.stallName,
+      category: i.category,
+      description: i.description
+    }));
+
+    const systemInstruction = `You are BiteFlow AI Concierge, a stadium food court assistant.
+You help customers browse and order food from kiosks active for their match.
+The active kiosks and their menu items are:
+${JSON.stringify(activeMenuInfo)}
+
+Rules:
+1. Detect the user's language (English, Spanish, Portuguese, Italian, French, etc.) and reply in the EXACT same language.
+2. Recommend matching items. Suggest 1 to 4 items.
+3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?"
+4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" and you MUST append [SHOW_CHECKOUT] at the very end of your response.
+5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.`;
+
+    const contents = [];
+    const recentHistory = history.slice(-6);
+    recentHistory.forEach(h => {
+      contents.push({
+        role: h.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      });
+    });
+
+    contents.push({
+      role: 'user',
+      parts: [{ text }]
+    });
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: {
+            parts: [{ text: systemInstruction }]
+          },
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 500
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || chatInput).trim();
+    if (!text) return;
+
+    // Add user message
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'user',
+      text,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedHistory = [...chatMessages, userMsg];
+    setChatMessages(updatedHistory);
+    setChatInput('');
+    setAiTyping(true);
+
+    // Check if we can use the live Gemini API
+    if (geminiApiKey.trim()) {
+      try {
+        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey);
+        
+        let parsedText = rawResponse;
+        let attachedItems: MenuItem[] = [];
+        let shouldShowCheckout = false;
+        
+        if (rawResponse.includes('[SHOW_CHECKOUT]')) {
+          shouldShowCheckout = true;
+          parsedText = parsedText.replace('[SHOW_CHECKOUT]', '').trim();
+        }
+
+        // Parse [ITEMS: ["id1", "id2"]] tags
+        const itemsTagMatch = rawResponse.match(/\[ITEMS:\s*(\[[^\]]*\])\]/);
+        if (itemsTagMatch) {
+          try {
+            const ids: string[] = JSON.parse(itemsTagMatch[1]);
+            attachedItems = filteredMenuItems.filter(i => ids.includes(i.id));
+            parsedText = parsedText.replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '').trim();
+          } catch (e) {
+            console.error('Error parsing attached items:', e);
+          }
+        }
+
+        const aiMsg: ChatMessage = {
+          id: `msg-${Date.now() + 1}`,
+          sender: 'ai',
+          text: parsedText,
+          timestamp: new Date().toISOString(),
+          suggestedItems: attachedItems.length > 0 ? attachedItems : undefined,
+          showCheckoutAction: shouldShowCheckout
+        };
+
+        setChatMessages(prev => [...prev, aiMsg]);
+        setAiTyping(false);
+        return;
+      } catch (err) {
+        console.error('Gemini API call failed, falling back to local simulated response:', err);
+      }
+    }
+
+    // Local Fallback simulation
+    setTimeout(() => {
+      const lang = detectLanguage(text);
+      let aiResponseText = '';
+      let suggestedItems: MenuItem[] = [];
+      let nextPendingConfirmation = null;
+      let shouldShowCheckout = false;
+
+      const lower = text.toLowerCase();
+      const isDone = CHAT_FLOW_TRANSLATIONS[lang].doneKeywords.some(keyword => lower.includes(keyword));
+
+      if (isDone) {
+        aiResponseText = CHAT_FLOW_TRANSLATIONS[lang].askPayment;
+        shouldShowCheckout = true;
+      } else if (pendingConfirmation) {
+        const isYes = lower.includes('yes') || lower.includes('sí') || lower.includes('si') || lower.includes('sim') || lower.includes('oui') || lower.includes('ok') || lower.includes('confirm');
+        const qtyMatch = text.match(/\b\d+\b/);
+        
+        if (isYes || qtyMatch) {
+          const qty = qtyMatch ? parseInt(qtyMatch[0]) : pendingConfirmation.quantity;
+          
+          addToCart(pendingConfirmation.item, qty);
+          const confirmText = TRANSLATIONS[pendingConfirmation.lang].confirmed(qty, pendingConfirmation.item.name);
+          const moreQuestionText = CHAT_FLOW_TRANSLATIONS[pendingConfirmation.lang].moreQuestion;
+          aiResponseText = `${confirmText} ${moreQuestionText}`;
+          setPendingConfirmation(null);
+        } else {
+          const matches = getMatchingItems(text, filteredMenuItems);
+          if (matches.length === 0) {
+            aiResponseText = TRANSLATIONS[lang].noItems;
+          } else if (matches.length === 1) {
+            const item = matches[0];
+            aiResponseText = TRANSLATIONS[lang].askQuantity(item.name);
+            nextPendingConfirmation = { item, quantity: 1, lang };
+            suggestedItems = [item];
+          } else {
+            aiResponseText = TRANSLATIONS[lang].foundItems;
+            suggestedItems = matches;
+          }
+        }
+      } else {
+        // Standard search
+        const matches = getMatchingItems(text, filteredMenuItems);
+        if (matches.length === 0) {
+          aiResponseText = TRANSLATIONS[lang].noItems;
+        } else if (matches.length === 1) {
+          const item = matches[0];
+          aiResponseText = TRANSLATIONS[lang].askQuantity(item.name);
+          nextPendingConfirmation = { item, quantity: 1, lang };
+          suggestedItems = [item];
+        } else {
+          aiResponseText = TRANSLATIONS[lang].foundItems;
+          suggestedItems = matches;
+        }
+      }
+
+      const aiMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'ai',
+        text: aiResponseText,
+        timestamp: new Date().toISOString(),
+        suggestedItems: suggestedItems.length > 0 ? suggestedItems : undefined,
+        showCheckoutAction: shouldShowCheckout
+      };
+
+      setChatMessages(prev => [...prev, aiMsg]);
+      if (nextPendingConfirmation) {
+        setPendingConfirmation(nextPendingConfirmation);
+      } else {
+        setPendingConfirmation(null);
+      }
+      setAiTyping(false);
+    }, 1000);
+  };
+
   const cartTotal = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
 
   // Top Up Wallet
@@ -244,7 +689,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     
     // Simulate payment processing delay
     setTimeout(async () => {
-      const updatedWallet = await db.loadWalletFunds(amount);
+      const updatedWallet = await db.loadWalletFunds(db.getCustomerUid(), amount);
       setWallet(updatedWallet);
       setLoadingFunds(false);
       setLoadAmount(null);
@@ -259,55 +704,74 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       return;
     }
 
+    if (!standName.trim()) {
+      alert('Please specify your Stand / Section in the cart delivery details.');
+      return;
+    }
+    if (!seatNumber.trim()) {
+      alert('Please specify your Seat Number in the cart delivery details.');
+      return;
+    }
+
+    const customerUid = db.getCustomerUid();
     const customerName = db.getCustomerName();
     const orderTime = new Date().toISOString();
-    
-    // Group cart items by stallId so we place separate orders for each stall
-    const itemsByStall: { [stallId: string]: { stallName: string; items: OrderItem[] } } = {};
-    
+
+    // Group cart items by kiosk (stall) — one order can span multiple kiosks,
+    // each tracking its own fulfillment status independently.
+    const kioskOrders: Record<string, KioskOrderEntry> = {};
+
     cart.forEach(({ item, quantity }) => {
-      if (!itemsByStall[item.stallId]) {
-        itemsByStall[item.stallId] = {
-          stallName: item.stallName,
-          items: []
+      if (!kioskOrders[item.stallId]) {
+        kioskOrders[item.stallId] = {
+          kioskId: item.stallId,
+          kioskName: item.stallName,
+          items: [],
+          subtotal: 0,
+          status: 'pending'
         };
       }
-      itemsByStall[item.stallId].items.push({
+      kioskOrders[item.stallId].items.push({
         menuItemId: item.id,
         name: item.name,
         price: item.price,
-        quantity,
-        stallId: item.stallId
+        quantity
       });
     });
 
-    // Create suborders
-    const newOrders: Order[] = Object.keys(itemsByStall).map(stallId => {
-      const stallData = itemsByStall[stallId];
-      const subtotal = stallData.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-      return {
-        id: `ord-${Math.floor(100 + Math.random() * 900)}-${Date.now().toString().slice(-4)}`,
-        stallId,
-        stallName: stallData.stallName,
-        customerName,
-        items: stallData.items,
-        totalAmount: subtotal,
-        status: 'pending',
-        orderTime,
-        notes: checkoutNotes.trim() || undefined
-      };
+    Object.values(kioskOrders).forEach(k => {
+      k.subtotal = k.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
     });
 
-    // Save orders in database
-    await db.addOrders(newOrders);
+    const activeMatch = matches.find(m => m.id === selectedMatchId);
+
+    const order: Order = {
+      id: `ord-${Date.now().toString(36)}-${Math.floor(100 + Math.random() * 900)}`,
+      customerUid,
+      customerName,
+      matchId: selectedMatchId || undefined,
+      matchName: activeMatch?.name,
+      matchCity: activeMatch?.city,
+      matchDateTime: activeMatch?.dateTime,
+      stand: standName.trim(),
+      seatNumber: seatNumber.trim(),
+      kioskIds: Object.keys(kioskOrders),
+      kioskOrders,
+      totalAmount: cartTotal,
+      orderTime,
+      notes: checkoutNotes.trim() || undefined
+    };
+
+    // Save the order in the database
+    await db.placeOrder(order);
 
     // Deduct wallet funds
-    const description = `Multi-stall food purchase (${newOrders.map(o => o.stallName).join(', ')})`;
-    await db.deductWalletFunds(cartTotal, description);
+    const description = `Multi-kiosk food purchase (${Object.values(kioskOrders).map(k => k.kioskName).join(', ')})`;
+    await db.deductWalletFunds(customerUid, cartTotal, description);
 
     // Record last order for success modal
     setLastOrderDetails({
-      id: newOrders.map(o => o.id.split('-')[1]).join(', #'),
+      id: order.id,
       total: cartTotal
     });
 
@@ -321,8 +785,16 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     await loadData();
   };
 
+  const activeMatch = matches.find(m => m.id === selectedMatchId);
+  const activeMatchStallIds = activeMatch ? (activeMatch.stallIds || []) : [];
+  const availableStalls = stalls.filter(s => activeMatchStallIds.includes(s.id));
+
   // Filter items
   const filteredMenuItems = menuItems.filter(item => {
+    // Only show items from stalls assigned to the active match
+    const isStallInMatch = activeMatchStallIds.includes(item.stallId);
+    if (!isStallInMatch) return false;
+
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStall = selectedStallId === 'all' || item.stallId === selectedStallId;
@@ -331,7 +803,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   });
 
   // Helper for order progress bar
-  const getProgressPercentage = (status: Order['status']) => {
+  const getProgressPercentage = (status: OrderStatus) => {
     switch (status) {
       case 'pending': return 25;
       case 'preparing': return 50;
@@ -501,6 +973,77 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     );
   }
 
+  if (user && !hasSubmittedMatchDetails) {
+    return (
+      <div style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
+        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px' }}>
+          
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <span style={{ fontSize: '3rem' }}>Stadium Roster 🏟️</span>
+            <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
+              Select Your Scheduled Game
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              Select the FIFA match you are attending to view the stadium's active kiosk offerings!
+            </p>
+          </div>
+
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!selectedMatchId) {
+                alert('Please select a match.');
+                return;
+              }
+              setHasSubmittedMatchDetails(true);
+            }} 
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Select Scheduled Match
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                <select
+                  required
+                  value={selectedMatchId}
+                  onChange={(e) => setSelectedMatchId(e.target.value)}
+                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                >
+                  <option value="" style={{ color: 'black' }}>-- Select Match --</option>
+                  {matches.map(m => (
+                    <option key={m.id} value={m.id} style={{ color: 'black' }}>
+                      {m.name} ({m.city})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)' }}
+            >
+              Enter Stadium & View Food Court
+            </button>
+          </form>
+
+          {/* Optional Logout Link */}
+          <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+            <button 
+              onClick={handleLogout} 
+              style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}
+            >
+              Sign Out / Switch Account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', animation: 'slide-up 0.4s ease' }}>
       
@@ -522,10 +1065,10 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         <div>
           <span style={{ fontSize: '2.5rem' }}>🍔🌮🍟</span>
           <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Campus Food Court <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>Simulator</span>
+            {selectedMatchId ? 'Stadium Food Court' : 'Campus Food Court'} <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>{selectedMatchId ? 'Live Game Delivery' : 'Simulator'}</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            Welcome back, <strong>{user?.displayName || wallet.username}</strong>! Order from multiple food stalls in a single transaction.
+            Welcome back, <strong>{user?.displayName || db.getCustomerName()}</strong>! Order from multiple food stalls in a single transaction.
             <button 
               onClick={handleLogout}
               style={{
@@ -547,6 +1090,58 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
               <LogOut size={12} /> Sign Out
             </button>
           </p>
+          
+          {selectedMatchId && (
+            <div 
+              style={{ 
+                marginTop: '1.25rem', 
+                background: 'rgba(6, 182, 212, 0.08)', 
+                border: '1px solid rgba(6, 182, 212, 0.3)', 
+                borderRadius: '10px', 
+                padding: '0.6rem 1rem', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>🏟️</span>
+                <span>
+                  Watching: <strong>{matches.find(m => m.id === selectedMatchId)?.name}</strong> 
+                  <span style={{ color: 'var(--text-muted)' }}> | Venue: <strong>{matches.find(m => m.id === selectedMatchId)?.city}</strong></span>
+                  {standName && seatNumber ? (
+                    <>
+                      <span style={{ color: 'var(--text-muted)' }}> | Stand: <strong>{standName}</strong></span>
+                      <span style={{ color: 'var(--text-muted)' }}> | Seat: <strong>{seatNumber}</strong></span>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--accent-orange)' }}> | ⚠️ Seating not set (enter in cart before checkout)</span>
+                  )}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHasSubmittedMatchDetails(false)}
+                style={{
+                  background: 'rgba(6, 182, 212, 0.15)',
+                  border: '1px solid var(--accent-cyan)',
+                  color: 'var(--accent-cyan)',
+                  borderRadius: '6px',
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                Change Game
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Quick Wallet Summary widget */}
@@ -595,11 +1190,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
                 {activeOrders
                   .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
                   .map(order => (
-                    <div 
-                      key={order.id} 
-                      style={{ 
-                        background: 'rgba(3, 7, 18, 0.4)', 
-                        padding: '1.25rem', 
+                    <div
+                      key={`${order.orderId}-${order.kioskId}`}
+                      style={{
+                        background: 'rgba(3, 7, 18, 0.4)',
+                        padding: '1.25rem',
                         borderRadius: '12px',
                         border: '1px solid var(--border-color)',
                         animation: 'pulse-soft 5s infinite ease-in-out'
@@ -607,8 +1202,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div>
-                          <strong style={{ fontSize: '0.95rem' }}>{order.stallName}</strong>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>Order #{order.id.split('-')[1]}</span>
+                          <strong style={{ fontSize: '0.95rem' }}>{order.kioskName}</strong>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>Order #{order.orderId.split('-')[1]}</span>
                         </div>
                         <span className={`badge ${
                           order.status === 'pending' ? 'badge-warning' :
@@ -648,159 +1243,461 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             </div>
           )}
 
-          {/* Catalog: Search, Filter, Browse */}
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            
-            {/* Filters Row */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                
-                {/* Search Bar */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-                  <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Search dishes, stalls, or categories..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ paddingLeft: '2.5rem' }}
-                  />
-                </div>
-
-                {/* Stall filter dropdown */}
-                <div style={{ width: '200px' }}>
-                  <select
-                    className="input-field"
-                    value={selectedStallId}
-                    onChange={(e) => setSelectedStallId(e.target.value)}
-                  >
-                    <option value="all">🏪 All Food Stalls</option>
-                    {stalls.map(s => (
-                      <option key={s.id} value={s.id}>{s.logoUrl} {s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Category pills */}
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ 
-                      padding: '0.35rem 0.85rem', 
-                      fontSize: '0.8rem',
-                      textTransform: 'capitalize',
-                      borderRadius: '20px'
-                    }}
-                  >
-                    {cat === 'all' ? '🍽️ All categories' : cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Menu Items Grid */}
-            {filteredMenuItems.length === 0 ? (
-              <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                <Info size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>No dishes found</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  Try refining your search text or removing the filters.
+          {/* AI Concierge Chat Console */}
+          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '520px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                  <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
+                  <span style={{ fontSize: '0.7rem', color: geminiApiKey ? 'var(--accent-green)' : 'var(--accent-orange)', background: geminiApiKey ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: geminiApiKey ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
+                    {geminiApiKey ? '🤖 Live Gemini 2.5 Flash' : '⚡ Simulated AI'}
+                  </span>
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
+                  Ask in Spanish, Portuguese, French, Italian, or English!
                 </p>
               </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                {filteredMenuItems.map(item => (
-                  <div 
-                    key={item.id} 
-                    className="glass-panel list-item-hover"
+              
+              <button
+                onClick={() => setShowVisualMenu(!showVisualMenu)}
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+              >
+                {showVisualMenu ? '💬 Show AI Chat Only' : '🍽️ Browse Visual Grid'}
+              </button>
+            </div>
+
+            {!showVisualMenu ? (
+              <>
+                {/* Chat Message Thread */}
+                <div style={{ 
+                  flex: 1, 
+                  maxHeight: '380px', 
+                  overflowY: 'auto', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1rem', 
+                  padding: '0.5rem',
+                  background: 'rgba(3, 7, 18, 0.2)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  {chatMessages.map((msg) => (
+                    <div 
+                      key={msg.id} 
+                      style={{ 
+                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <div 
+                        style={{
+                          background: msg.sender === 'user' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'rgba(255, 255, 255, 0.03)',
+                          border: msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
+                          color: 'white',
+                          padding: '0.75rem 1rem',
+                          borderRadius: msg.sender === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                          fontSize: '0.9rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}
+                      >
+                        {msg.text}
+                      </div>
+
+                      {/* Attached/Suggested menu items rendered as interactive cards */}
+                      {msg.suggestedItems && msg.suggestedItems.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          {msg.suggestedItems.map((item) => (
+                            <div 
+                              key={item.id} 
+                              style={{ 
+                                display: 'flex', 
+                                gap: '0.75rem', 
+                                background: 'rgba(3,7,18,0.5)', 
+                                border: '1px solid rgba(6, 182, 212, 0.2)', 
+                                borderRadius: '10px', 
+                                padding: '0.6rem',
+                                alignItems: 'center' 
+                              }}
+                            >
+                              <img 
+                                src={item.imageUrl} 
+                                alt={item.name} 
+                                style={{ width: '45px', height: '45px', borderRadius: '6px', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200';
+                                }}
+                              />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <h5 style={{ fontWeight: 600, fontSize: '0.85rem', color: 'white', margin: 0 }}>{item.name}</h5>
+                                  <strong style={{ fontSize: '0.85rem', color: 'var(--accent-green)' }}>${item.price.toFixed(2)}</strong>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>from {item.stallName}</span>
+                              </div>
+                              {(() => {
+                                const cartEntry = cart.find(c => c.item.id === item.id);
+                                if (cartEntry) {
+                                  return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                      <button
+                                        onClick={() => {
+                                          if (cartEntry.quantity <= 1) {
+                                            removeFromCart(item.id);
+                                          } else {
+                                            updateCartQty(item.id, -1);
+                                          }
+                                        }}
+                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
+                                      >
+                                        {cartEntry.quantity <= 1 ? '🗑' : '−'}
+                                      </button>
+                                      <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>
+                                        {cartEntry.quantity}
+                                      </span>
+                                      <button
+                                        onClick={() => updateCartQty(item.id, 1)}
+                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.15)', color: 'var(--accent-cyan)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => handleAddFromChatCard(item)}
+                                    className="btn btn-primary"
+                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '6px', whiteSpace: 'nowrap' }}
+                                  >
+                                    <Plus size={10} /> Add
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {msg.showCheckoutAction && cart.length > 0 && (
+                        <div 
+                          style={{ 
+                            marginTop: '0.5rem', 
+                            padding: '1.25rem', 
+                            background: 'rgba(3, 7, 18, 0.75)', 
+                            border: '2px solid var(--accent-cyan)', 
+                            borderRadius: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem',
+                            boxShadow: '0 8px 32px rgba(6, 182, 212, 0.15)',
+                            backdropFilter: 'blur(10px)',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', display: 'block' }}>
+                            🛒 Checkout Order Summary
+                          </span>
+                          
+                          {/* Cart items list */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {cart.map(({ item, quantity }) => (
+                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                                <span>{quantity}x {item.name}</span>
+                                <span style={{ fontWeight: 600 }}>${(item.price * quantity).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 700, borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '0.5rem', color: 'white' }}>
+                            <span>Total:</span>
+                            <span style={{ color: 'var(--accent-green)' }}>${cartTotal.toFixed(2)}</span>
+                          </div>
+
+                          {/* Seating Form fields directly in the chat bubble */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
+                                Stand / Section
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. West Stand"
+                                value={standName}
+                                onChange={(e) => setStandName(e.target.value)}
+                                style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                            
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
+                                Seat Number
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. C-14"
+                                value={seatNumber}
+                                onChange={(e) => setSeatNumber(e.target.value)}
+                                style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                          </div>
+
+                          {wallet.balance < cartTotal && (
+                            <div style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem', color: '#f87171' }}>
+                              Insufficient wallet balance! Top up in the header widget.
+                            </div>
+                          )}
+
+                          <button
+                            onClick={handleCheckout}
+                            disabled={wallet.balance < cartTotal}
+                            className="btn btn-primary"
+                            style={{ 
+                              width: '100%', 
+                              padding: '0.6rem', 
+                              fontSize: '0.85rem', 
+                              fontWeight: 700, 
+                              background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', 
+                              boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)',
+                              opacity: wallet.balance < cartTotal ? 0.5 : 1,
+                              cursor: wallet.balance < cartTotal ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            💳 Proceed with Payment (${cartTotal.toFixed(2)})
+                          </button>
+                        </div>
+                      )}
+
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                  
+                  {aiTyping && (
+                    <div style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.6rem 1rem', borderRadius: '16px 16px 16px 2px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate' }}></span>
+                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate', animationDelay: '0.2s' }}></span>
+                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate', animationDelay: '0.4s' }}></span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pre-suggested starters row */}
+                {chatMessages.length === 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Suggested prompts:</span>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => handleSendMessage("I want to order a taco")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇺🇸 taco</button>
+                      <button type="button" onClick={() => handleSendMessage("Quiero una hamburguesa")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇪🇸 hamburguesa</button>
+                      <button type="button" onClick={() => handleSendMessage("Gostaria de ver o cardápio de hambúrguer")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇵🇹 hambúrguer</button>
+                      <button type="button" onClick={() => handleSendMessage("Je veux commander des nouilles")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇫🇷 nouilles</button>
+                      <button type="button" onClick={() => handleSendMessage("Vorrei ordinare un dolce")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇮🇹 dolce</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chat Input row */}
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }}
+                  style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', alignItems: 'center' }}
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask BiteFlow AI Concierge..."
+                    className="input-field"
+                    style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
+                  />
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    Send
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowCart(true)}
                     style={{ 
-                      overflow: 'hidden', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      border: '1px solid var(--border-color)',
-                      opacity: item.isAvailable ? 1 : 0.6
+                      position: 'relative', 
+                      padding: '0.6rem', 
+                      borderRadius: '10px', 
+                      border: cart.length > 0 ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)', 
+                      background: cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)', 
+                      color: cart.length > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    {/* Item Image */}
-                    <div style={{ height: '150px', position: 'relative' }}>
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500';
-                        }}
+                    <ShoppingBag size={18} />
+                    {cart.length > 0 && (
+                      <span style={{ 
+                        position: 'absolute', 
+                        top: '-6px', 
+                        right: '-6px', 
+                        background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
+                        color: 'white', 
+                        fontSize: '0.6rem', 
+                        fontWeight: 800, 
+                        width: '18px', 
+                        height: '18px', 
+                        borderRadius: '50%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 6px rgba(239,68,68,0.4)'
+                      }}>
+                        {cart.reduce((sum, c) => sum + c.quantity, 0)}
+                      </span>
+                    )}
+                  </button>
+                </form>
+              </>
+            ) : (
+              /* Catalog: Search, Filter, Browse */
+              <div>
+                {/* Filters Row */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    {/* Search Bar */}
+                    <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                      <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Search dishes, stalls, or categories..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ paddingLeft: '2.5rem' }}
                       />
-                      <div style={{ position: 'absolute', top: '10px', left: '10px' }}>
-                        <span className="badge badge-info" style={{ background: 'rgba(3, 7, 18, 0.75)', backdropFilter: 'blur(4px)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
-                          {item.category}
-                        </span>
-                      </div>
-                      
-                      <div style={{ position: 'absolute', bottom: '10px', right: '10px' }}>
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          background: 'rgba(3, 7, 18, 0.85)', 
-                          color: 'var(--text-primary)', 
-                          padding: '0.25rem 0.5rem', 
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          backdropFilter: 'blur(4px)'
-                        }}>
-                          <Store size={10} /> {item.stallName}
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Item Details */}
-                    <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div>
-                        <h3 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                          {item.name}
-                        </h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.4, height: '56px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', marginBottom: '0.75rem' }}>
-                          {item.description}
-                        </p>
-                      </div>
+                    {/* Stall filter dropdown */}
+                    <div style={{ width: '200px' }}>
+                      <select
+                        className="input-field"
+                        value={selectedStallId}
+                        onChange={(e) => setSelectedStallId(e.target.value)}
+                      >
+                        <option value="all">🏪 All Food Stalls</option>
+                        {availableStalls.map(s => (
+                          <option key={s.id} value={s.id}>{s.logoUrl} {s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-green)' }}>
-                            ${item.price.toFixed(2)}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Clock size={11} /> {item.prepTime} min
+                  {/* Category pills */}
+                  <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ 
+                          padding: '0.35rem 0.85rem', 
+                          fontSize: '0.8rem',
+                          textTransform: 'capitalize',
+                          borderRadius: '20px'
+                        }}
+                      >
+                        {cat === 'all' ? '🍽️ All categories' : cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Menu Items Grid */}
+                {filteredMenuItems.length === 0 ? (
+                  <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                    <Info size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>No dishes found</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                      Try refining your search text or removing the filters.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    {filteredMenuItems.map(item => (
+                      <div 
+                        key={item.id} 
+                        className="glass-panel list-item-hover"
+                        style={{ 
+                          overflow: 'hidden', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          border: '1px solid var(--border-color)',
+                          opacity: item.isAvailable ? 1 : 0.6
+                        }}
+                      >
+                        {/* Item Image */}
+                        <div style={{ height: '150px', position: 'relative' }}>
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600';
+                            }}
+                          />
+                          <span style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(3, 7, 18, 0.8)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                            {item.stallName}
                           </span>
                         </div>
 
-                        {item.isAvailable ? (
-                          <button 
-                            onClick={() => addToCart(item)}
-                            className="btn btn-primary" 
-                            style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-                          >
-                            <Plus size={14} /> Add to Cart
-                          </button>
-                        ) : (
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem', cursor: 'not-allowed', color: 'var(--text-muted)' }}
-                            disabled
-                          >
-                            Out of Stock
-                          </button>
-                        )}
+                        {/* Content */}
+                        <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
+                          <div>
+                            <span className="badge badge-info" style={{ textTransform: 'capitalize', fontSize: '0.65rem', marginBottom: '0.5rem', borderRadius: '4px' }}>{item.category}</span>
+                            <h4 style={{ fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.35rem', color: 'white' }}>{item.name}</h4>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.4, height: '56px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', marginBottom: '0.75rem' }}>
+                              {item.description}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-green)' }}>
+                                ${item.price.toFixed(2)}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <Clock size={11} /> {item.prepTime} min
+                              </span>
+                            </div>
+
+                            {item.isAvailable ? (
+                              <button 
+                                onClick={() => addToCart(item)}
+                                className="btn btn-primary" 
+                                style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                              >
+                                <Plus size={14} /> Add to Cart
+                              </button>
+                            ) : (
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem', cursor: 'not-allowed', color: 'var(--text-muted)' }}
+                                disabled
+                              >
+                                Out of Stock
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
@@ -965,6 +1862,45 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
                   </div>
                 )}
               </div>
+
+              {/* Delivery Seating Details */}
+              {cart.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.85rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    🏟️ Stadium Delivery Details
+                  </span>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        Stand / Section
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. West Stand"
+                        value={standName}
+                        onChange={(e) => setStandName(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.45rem 0.6rem', color: 'white', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        Seat Number
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. C-14"
+                        value={seatNumber}
+                        onChange={(e) => setSeatNumber(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.45rem 0.6rem', color: 'white', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Order Notes (only show if items exist) */}
               {cart.length > 0 && (

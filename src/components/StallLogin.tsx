@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall } from '../types';
+import type { Stall, StallSession } from '../types';
 
 interface StallLoginProps {
-  onLoginSuccess: (stall: Stall) => void;
+  onLoginSuccess: (stall: StallSession) => void;
 }
+
+const toSession = (stall: Stall): StallSession => {
+  const { ownerPasswordEnc: _omit, ...session } = stall;
+  return session;
+};
 
 export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
@@ -30,15 +35,12 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    const stalls = await db.getStalls();
-    const stall = stalls.find(
-      s => s.ownerUsername.toLowerCase() === username.trim().toLowerCase() &&
-           s.ownerPassword === password.trim()
-    );
+    const stall = await db.verifyStallCredentials(username.trim(), password.trim());
 
     if (stall) {
-      db.setActiveStall(stall);
-      onLoginSuccess(stall);
+      const session = toSession(stall);
+      db.setActiveStall(session);
+      onLoginSuccess(session);
     } else {
       setLoginError('Invalid username or password. Check the sandbox accounts below!');
     }
@@ -48,8 +50,9 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
     const stalls = await db.getStalls();
     const stall = stalls.find(s => s.ownerUsername === uname);
     if (stall) {
-      db.setActiveStall(stall);
-      onLoginSuccess(stall);
+      const session = toSession(stall);
+      db.setActiveStall(session);
+      onLoginSuccess(session);
     }
   };
 
@@ -110,20 +113,21 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
           <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
         </div>
 
-        {/* Display list of active accounts with their passwords */}
+        {/* Quick-login by username only — passwords are encrypted and only ever
+            decrypted within the Platform Admin portal, not shown here. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Stalls (Credentials):</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Stalls (Quick Login):</span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
             {currentStalls.map(s => (
-              <button 
-                key={s.id} 
+              <button
+                key={s.id}
                 type="button"
                 onClick={() => handleQuickLogin(s.ownerUsername)}
-                className="btn btn-secondary" 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
+                className="btn btn-secondary"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   padding: '0.5rem 0.75rem',
                   fontSize: '0.8rem',
                   textAlign: 'left'
@@ -131,7 +135,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
               >
                 <span>{s.logoUrl} <strong>{s.name}</strong></span>
                 <code style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
-                  User: {s.ownerUsername} | Pass: {s.ownerPassword}
+                  User: {s.ownerUsername}
                 </code>
               </button>
             ))}

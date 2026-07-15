@@ -1,20 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall, MenuItem, Order, DashboardStats } from '../types';
-import { 
-  Store, Plus, Trash2, Edit, Check, X, Clock, 
-  TrendingUp, DollarSign, ShoppingBag, LogOut, 
+import type { StallSession, MenuItem, OrderStatus, OrderLineItem, DashboardStats } from '../types';
+import {
+  Store, Plus, Trash2, Edit, Check, X, Clock,
+  TrendingUp, DollarSign, ShoppingBag, LogOut,
   Sparkles, AlertCircle, RefreshCw, Lock
 } from 'lucide-react';
 
 interface StallDashboardProps {
-  stall: Stall;
+  stall: StallSession;
   onLogout: () => void;
+}
+
+// This kiosk's own slice of a (possibly multi-kiosk) order, flattened for display.
+interface KioskOrderView {
+  orderId: string;
+  customerUid: string;
+  customerName: string;
+  matchName?: string;
+  stand?: string;
+  seatNumber?: string;
+  orderTime: string;
+  notes?: string;
+  items: OrderLineItem[];
+  subtotal: number;
+  status: OrderStatus;
 }
 
 export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'analytics'>('orders');
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<KioskOrderView[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
@@ -35,11 +50,43 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   const [itemName, setItemName] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [itemPrice, setItemPrice] = useState('');
-  const [itemImage, setItemImage] = useState('');
+  const [presetImage, setPresetImage] = useState('');
+  const [customImageUrl, setCustomImageUrl] = useState('');
+  const [uploadedImage, setUploadedImage] = useState('');
   const [itemCategory, setItemCategory] = useState('Burgers');
   const [itemPrepTime, setItemPrepTime] = useState('10');
   const [itemAvailable, setItemAvailable] = useState(true);
   const [formError, setFormError] = useState('');
+  const [imageSource, setImageSource] = useState<'presets' | 'url' | 'upload'>('presets');
+
+  const detectImageSource = (url: string): 'presets' | 'url' | 'upload' => {
+    if (!url) return 'presets';
+    if (url.startsWith('data:')) return 'upload';
+    if (imagePresets.some(preset => url.startsWith(preset.url.split('?')[0]))) return 'presets';
+    return 'url';
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setFormError('Image file is too large (max 2MB).');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setUploadedImage(reader.result);
+          setFormError('');
+        }
+      };
+      reader.onerror = () => {
+        setFormError('Failed to read file.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Change Password state
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
@@ -53,7 +100,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   const imagePresets = [
     { label: 'Burger', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
     { label: 'Pizza', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500' },
-    { label: 'Taco', url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500' },
+    { label: 'Taco', url: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500' },
     { label: 'Fries', url: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500' },
     { label: 'Noodles', url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500' },
     { label: 'Boba Tea', url: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500' },
@@ -64,19 +111,36 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   // Load data
   const loadData = async () => {
     // Load menu items for this stall
-    const allItems = await db.getMenuItems();
-    const stallItems = allItems.filter(item => item.stallId === stall.id);
+    const stallItems = await db.getMenuItems(stall.id);
     setMenuItems(stallItems);
 
-    // Load orders for this stall
-    const allOrders = await db.getOrders();
-    const stallOrders = allOrders.filter(order => order.stallId === stall.id);
+    // Load orders that include this kiosk (an order can span multiple kiosks;
+    // we only ever look at our own slice of it).
+    const matchingOrders = await db.getOrdersForKiosk(stall.id);
+    const stallOrders: KioskOrderView[] = matchingOrders
+      .map(o => {
+        const entry = o.kioskOrders[stall.id];
+        return {
+          orderId: o.id,
+          customerUid: o.customerUid,
+          customerName: o.customerName,
+          matchName: o.matchName,
+          stand: o.stand,
+          seatNumber: o.seatNumber,
+          orderTime: o.orderTime,
+          notes: o.notes,
+          items: entry.items,
+          subtotal: entry.subtotal,
+          status: entry.status
+        };
+      })
+      .sort((a, b) => new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime());
     setOrders(stallOrders);
 
     // Calculate statistics
     const completed = stallOrders.filter(o => o.status === 'completed');
     const cancelled = stallOrders.filter(o => o.status === 'cancelled');
-    const totalRev = completed.reduce((sum, o) => sum + o.totalAmount, 0);
+    const totalRev = completed.reduce((sum, o) => sum + o.subtotal, 0);
     const avgVal = completed.length > 0 ? totalRev / completed.length : 0;
 
     setStats({
@@ -96,18 +160,20 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   }, [stall.id]);
 
   // Order status actions
-  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
-    const success = await db.updateOrderStatus(orderId, newStatus);
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    const success = await db.updateKioskOrderStatus(order.customerUid, orderId, stall.id, newStatus);
     if (success) {
-      // If we are cancelling, refund customer
+      // If we are cancelling, refund only this kiosk's portion of the order —
+      // other kiosks in the same order are unaffected.
       if (newStatus === 'cancelled') {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-          await db.refundWalletFunds(
-            order.totalAmount,
-            `Refund: Order #${order.id} cancelled by ${stall.name}`
-          );
-        }
+        await db.refundWalletFunds(
+          order.customerUid,
+          order.subtotal,
+          `Refund: Order #${order.orderId} (${stall.name}) cancelled`
+        );
       }
       await loadData();
     }
@@ -122,7 +188,8 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
       return;
     }
 
-    if (currentPasswordInput !== stall.ownerPassword) {
+    const verified = await db.verifyStallCredentials(stall.ownerUsername, currentPasswordInput);
+    if (!verified) {
       setPassError('Incorrect current password.');
       return;
     }
@@ -159,7 +226,23 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
       setItemName(item.name);
       setItemDescription(item.description);
       setItemPrice(item.price.toString());
-      setItemImage(item.imageUrl);
+      
+      const source = detectImageSource(item.imageUrl);
+      setImageSource(source);
+      if (source === 'presets') {
+        setPresetImage(item.imageUrl);
+        setCustomImageUrl('');
+        setUploadedImage('');
+      } else if (source === 'url') {
+        setPresetImage(imagePresets[0].url);
+        setCustomImageUrl(item.imageUrl);
+        setUploadedImage('');
+      } else {
+        setPresetImage(imagePresets[0].url);
+        setCustomImageUrl('');
+        setUploadedImage(item.imageUrl);
+      }
+      
       setItemCategory(item.category);
       setItemPrepTime(item.prepTime.toString());
       setItemAvailable(item.isAvailable);
@@ -168,10 +251,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
       setItemName('');
       setItemDescription('');
       setItemPrice('');
-      setItemImage(imagePresets[0].url);
+      setPresetImage(imagePresets[0].url);
+      setCustomImageUrl('');
+      setUploadedImage('');
       setItemCategory('Burgers');
       setItemPrepTime('10');
       setItemAvailable(true);
+      setImageSource('presets');
     }
     setFormError('');
     setIsMenuModalOpen(true);
@@ -182,8 +268,17 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
     e.preventDefault();
     setFormError('');
 
-    if (!itemName.trim() || !itemDescription.trim() || !itemPrice.trim() || !itemImage.trim()) {
-      setFormError('All fields are required.');
+    let finalImageUrl = '';
+    if (imageSource === 'presets') {
+      finalImageUrl = presetImage;
+    } else if (imageSource === 'url') {
+      finalImageUrl = customImageUrl.trim();
+    } else if (imageSource === 'upload') {
+      finalImageUrl = uploadedImage;
+    }
+
+    if (!itemName.trim() || !itemDescription.trim() || !itemPrice.trim() || !finalImageUrl) {
+      setFormError('All fields are required, including an image selection/upload.');
       return;
     }
 
@@ -206,7 +301,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         name: itemName.trim(),
         description: itemDescription.trim(),
         price: parsedPrice,
-        imageUrl: itemImage.trim(),
+        imageUrl: finalImageUrl,
         category: itemCategory,
         prepTime: parsedPrep,
         isAvailable: itemAvailable
@@ -228,7 +323,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         name: itemName.trim(),
         description: itemDescription.trim(),
         price: parsedPrice,
-        imageUrl: itemImage.trim(),
+        imageUrl: finalImageUrl,
         category: itemCategory,
         prepTime: parsedPrep,
         isAvailable: itemAvailable
@@ -242,7 +337,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
   const handleDeleteItem = async (itemId: string) => {
     if (window.confirm('Are you sure you want to delete this menu item?')) {
-      await db.deleteMenuItem(itemId);
+      await db.deleteMenuItem(stall.id, itemId);
       await loadData();
     }
   };
@@ -442,7 +537,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
               {filteredOrders.map(order => (
                 <div 
-                  key={order.id} 
+                  key={order.orderId} 
                   className={`glass-panel ${order.status === 'pending' ? 'pulse-glow' : ''}`}
                   style={{ 
                     padding: '1.5rem', 
@@ -456,7 +551,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Order #{order.id}</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Order #{order.orderId}</span>
                         <span className={`badge ${
                           order.status === 'pending' ? 'badge-warning' :
                           order.status === 'preparing' ? 'badge-info' :
@@ -507,6 +602,29 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                         <span><strong>Notes:</strong> {order.notes}</span>
                       </div>
                     )}
+                    {order.seatNumber && (
+                      <div style={{ 
+                        marginTop: '0.75rem', 
+                        padding: '0.75rem', 
+                        background: 'rgba(6, 182, 212, 0.08)', 
+                        border: '1px solid rgba(6, 182, 212, 0.3)', 
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        color: 'white',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.25rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>🏟️</span>
+                          <span><strong>Stadium Delivery:</strong></span>
+                        </div>
+                        <div style={{ marginLeft: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          <div>Match: <strong style={{ color: 'white' }}>{order.matchName}</strong></div>
+                          <div>Location: <strong style={{ color: 'white' }}>{order.stand} (Seat {order.seatNumber})</strong></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Order Total & Status Controls */}
@@ -521,21 +639,21 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total:</span>
-                      <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.totalAmount.toFixed(2)}</strong>
+                      <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.subtotal.toFixed(2)}</strong>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {order.status === 'pending' && (
                         <>
                           <button 
-                            onClick={() => handleUpdateStatus(order.id, 'cancelled')}
+                            onClick={() => handleUpdateStatus(order.orderId, 'cancelled')}
                             className="btn btn-secondary" 
                             style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                           >
                             <X size={14} /> Cancel & Refund
                           </button>
                           <button 
-                            onClick={() => handleUpdateStatus(order.id, 'preparing')}
+                            onClick={() => handleUpdateStatus(order.orderId, 'preparing')}
                             className="btn btn-primary"
                             style={{ 
                               padding: '0.5rem 1.25rem', 
@@ -553,7 +671,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
                       {order.status === 'preparing' && (
                         <button 
-                          onClick={() => handleUpdateStatus(order.id, 'ready')}
+                          onClick={() => handleUpdateStatus(order.orderId, 'ready')}
                           className="btn btn-primary"
                           style={{ 
                             padding: '0.5rem 1.25rem', 
@@ -570,7 +688,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
                       {order.status === 'ready' && (
                         <button 
-                          onClick={() => handleUpdateStatus(order.id, 'completed')}
+                          onClick={() => handleUpdateStatus(order.orderId, 'completed')}
                           className="btn btn-primary"
                           style={{ 
                             padding: '0.5rem 1.25rem', 
@@ -988,34 +1106,184 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Food Image URL
+                  Food Image
                 </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="https://images.unsplash.com/..."
-                  value={itemImage}
-                  onChange={(e) => setItemImage(e.target.value)}
-                  style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}
-                />
                 
-                {/* Image Presets Selector */}
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Quick Photo Presets:</span>
-                  <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', padding: '0.25rem 0', marginTop: '0.15rem' }}>
-                    {imagePresets.map(preset => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => setItemImage(preset.url)}
-                        className={`btn ${itemImage.startsWith(preset.url.split('?')[0]) ? 'btn-outline' : 'btn-secondary'}`}
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
+                {/* Tab selector */}
+                <div style={{ display: 'flex', gap: '0.25rem', padding: '0.2rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', marginBottom: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('presets')}
+                    style={{
+                      flex: 1,
+                      padding: '0.4rem',
+                      fontSize: '0.75rem',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: imageSource === 'presets' ? 'var(--accent-cyan)' : 'transparent',
+                      color: imageSource === 'presets' ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Preset Library
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('url')}
+                    style={{
+                      flex: 1,
+                      padding: '0.4rem',
+                      fontSize: '0.75rem',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: imageSource === 'url' ? 'var(--accent-cyan)' : 'transparent',
+                      color: imageSource === 'url' ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Custom URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('upload')}
+                    style={{
+                      flex: 1,
+                      padding: '0.4rem',
+                      fontSize: '0.75rem',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: imageSource === 'upload' ? 'var(--accent-cyan)' : 'transparent',
+                      color: imageSource === 'upload' ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Upload Image
+                  </button>
                 </div>
+
+                {/* Tab content */}
+                {imageSource === 'presets' && (
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Choose a Photo Preset:</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', marginTop: '0.25rem' }}>
+                      {imagePresets.map(preset => {
+                        const isSelected = presetImage === preset.url;
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => setPresetImage(preset.url)}
+                            style={{
+                              padding: '0.5rem 0.25rem',
+                              fontSize: '0.75rem',
+                              background: isSelected ? 'rgba(6, 182, 212, 0.15)' : 'rgba(31, 41, 55, 0.4)',
+                              border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
+                              borderRadius: '6px',
+                              color: isSelected ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              fontWeight: isSelected ? 600 : 400
+                            }}
+                          >
+                            <img 
+                              src={preset.url} 
+                              alt={preset.label} 
+                              style={{ width: '100%', height: '36px', objectFit: 'cover', borderRadius: '4px', marginBottom: '0.25rem' }} 
+                            />
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {imageSource === 'url' && (
+                  <div>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Paste image URL (e.g. https://images.unsplash.com/...)"
+                      value={customImageUrl}
+                      onChange={(e) => setCustomImageUrl(e.target.value)}
+                      style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}
+                    />
+                    
+                    {/* Instructions helper */}
+                    <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                      💡 <strong>Tip for Unsplash:</strong> Right-click the photo on Unsplash, select <strong>"Copy image address"</strong> (or "Copy image link"), and paste that direct link here.
+                    </p>
+
+                    {/* Warning if they paste a webpage URL */}
+                    {customImageUrl && customImageUrl.includes('unsplash.com/photos/') && !customImageUrl.includes('images.unsplash.com/') && (
+                      <p style={{ color: 'var(--accent-orange)', fontSize: '0.75rem', marginTop: '0.5rem', lineHeight: '1.4' }}>
+                        ⚠️ <strong>This is an Unsplash webpage URL, not a direct image URL.</strong> The browser will fail to load it. Please follow the tip above to copy the direct link.
+                      </p>
+                    )}
+
+                    {customImageUrl && (
+                      <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <img 
+                          src={customImageUrl} 
+                          alt="Preview" 
+                          style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500';
+                          }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Image Preview</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {imageSource === 'upload' && (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        fontSize: '0.8rem',
+                        background: 'rgba(31, 41, 55, 0.4)',
+                        border: '1px dashed var(--border-color)',
+                        borderRadius: '6px',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                      Max file size: 2MB. Supports PNG, JPG, GIF.
+                    </p>
+                    {uploadedImage && uploadedImage.startsWith('data:') && (
+                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <img 
+                          src={uploadedImage} 
+                          alt="Uploaded Preview" 
+                          style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Successfully loaded!</span>
+                          <button
+                            type="button"
+                            onClick={() => setUploadedImage('')}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-red)', fontSize: '0.7rem', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                          >
+                            Remove photo
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {editingItem && (

@@ -1,51 +1,82 @@
-import type { Stall, MenuItem, Order, UserWallet } from '../types';
+import type { Stall, MenuItem, Order, UserWallet, Match } from '../types';
+import { DEFAULT_CUSTOMER_UID, DEFAULT_CUSTOMER_NAME } from '../utils/constants';
 
-export const initialStalls: Stall[] = [
+export const FIFA_CITIES = [
+  'Atlanta',
+  'Boston',
+  'Dallas',
+  'Guadalajara',
+  'Houston',
+  'Kansas City',
+  'Los Angeles',
+  'Mexico City',
+  'Miami',
+  'Monterrey',
+  'New York/New Jersey',
+  'Philadelphia',
+  'San Francisco Bay Area',
+  'Seattle',
+  'Toronto',
+  'Vancouver'
+];
+
+// Seed stalls carry a plaintext password that database.ts encrypts (via
+// crypto.ts) into `ownerPasswordEnc` at seed time. Plaintext never touches
+// Firestore or LocalStorage.
+export type SeedStall = Omit<Stall, 'ownerPasswordEnc'> & { ownerPasswordPlain: string };
+
+export const initialStalls: SeedStall[] = [
   {
     id: 'stall-taco',
     name: 'Taco Del Sol',
     description: 'Vibrant street-style Mexican tacos, quesadillas, and fresh guacamole.',
     ownerUsername: 'taco_delsol',
-    ownerPassword: 'spicy-taco-721',
+    ownerPasswordPlain: 'spicy-taco-721',
     logoUrl: '🌮',
     bannerColor: '#f59e0b', // Amber
     rating: 4.8,
     active: true,
+    city: 'Mexico City',
   },
   {
     id: 'stall-burger',
     name: 'Burger Junction',
     description: 'Gourmet smashed beef burgers, crispy loaded fries, and signature sauces.',
     ownerUsername: 'burger_junction',
-    ownerPassword: 'crispy-burger-190',
+    ownerPasswordPlain: 'crispy-burger-190',
     logoUrl: '🍔',
     bannerColor: '#ef4444', // Red
     rating: 4.7,
     active: true,
+    city: 'Dallas',
   },
   {
     id: 'stall-wok',
     name: 'Wok & Roll',
     description: 'Express stir-fry noodles, dumplings, and flavorful Asian street food.',
     ownerUsername: 'wok_roll',
-    ownerPassword: 'tasty-wok-384',
+    ownerPasswordPlain: 'tasty-wok-384',
     logoUrl: '🥢',
     bannerColor: '#10b981', // Emerald
     rating: 4.5,
     active: true,
+    city: 'Vancouver',
   },
   {
     id: 'stall-sweet',
     name: 'Sweet Retreat',
     description: 'Warm waffles, artisanal gelato, bubble tea, and custom milkshakes.',
     ownerUsername: 'sweet_retreat',
-    ownerPassword: 'sweet-shake-902',
+    ownerPasswordPlain: 'sweet-shake-902',
     logoUrl: '🍦',
     bannerColor: '#ec4899', // Pink
     rating: 4.9,
     active: true,
+    city: 'Vancouver',
   }
 ];
+
+export const initialMatches: Match[] = [];
 
 export const initialMenuItems: MenuItem[] = [
   // Taco Del Sol
@@ -56,7 +87,7 @@ export const initialMenuItems: MenuItem[] = [
     name: 'Birria Beef Tacos (3x)',
     description: 'Slow-cooked shredded beef, melted Monterey Jack cheese, cilantro, onions, with warm consommé for dipping.',
     price: 12.99,
-    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=60',
+    imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=60',
     category: 'Mexican',
     isAvailable: true,
     prepTime: 8
@@ -189,106 +220,72 @@ export const initialMenuItems: MenuItem[] = [
   }
 ];
 
-export const initialOrders: Order[] = [
+// initialOrders is seed data keyed per-customer: users/{customerUid}/orders/{id}.
+// ord-101 demonstrates the multi-kiosk-in-one-order case (Taco Del Sol + Sweet Retreat);
+// each kiosk tracks its own fulfillment status independently within the same order.
+export const initialOrders: Record<string, Order[]> = {
+  [DEFAULT_CUSTOMER_UID]: [
   {
     id: 'ord-101',
-    stallId: 'stall-taco',
-    stallName: 'Taco Del Sol',
-    customerName: 'Alex Mercer',
-    items: [
-      {
-        menuItemId: 'taco-1',
-        name: 'Birria Beef Tacos (3x)',
-        price: 12.99,
-        quantity: 1,
-        stallId: 'stall-taco'
+    customerUid: DEFAULT_CUSTOMER_UID,
+    customerName: DEFAULT_CUSTOMER_NAME,
+    stand: 'Section 114',
+    seatNumber: 'Row F, Seat 12',
+    kioskIds: ['stall-taco', 'stall-sweet'],
+    kioskOrders: {
+      'stall-taco': {
+        kioskId: 'stall-taco',
+        kioskName: 'Taco Del Sol',
+        items: [
+          { menuItemId: 'taco-1', name: 'Birria Beef Tacos (3x)', price: 12.99, quantity: 1 },
+          { menuItemId: 'taco-3', name: 'Loaded Nachos & Guac', price: 7.99, quantity: 1 }
+        ],
+        subtotal: 20.98,
+        status: 'completed'
       },
-      {
-        menuItemId: 'taco-3',
-        name: 'Loaded Nachos & Guac',
-        price: 7.99,
-        quantity: 1,
-        stallId: 'stall-taco'
+      'stall-sweet': {
+        kioskId: 'stall-sweet',
+        kioskName: 'Sweet Retreat',
+        items: [
+          { menuItemId: 'sweet-2', name: 'Classic Brown Sugar Boba', price: 6.50, quantity: 2 }
+        ],
+        subtotal: 13.00,
+        status: 'ready'
       }
-    ],
-    totalAmount: 20.98,
-    status: 'completed',
+    },
+    totalAmount: 33.98,
     orderTime: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 hours ago
     notes: 'Extra lime wedges please!'
   },
   {
-    id: 'ord-102',
-    stallId: 'stall-burger',
-    stallName: 'Burger Junction',
-    customerName: 'Sarah Connor',
-    items: [
-      {
-        menuItemId: 'burger-1',
-        name: 'The Double Smash Burger',
-        price: 11.49,
-        quantity: 2,
-        stallId: 'stall-burger'
-      },
-      {
-        menuItemId: 'burger-2',
-        name: 'Crispy Truffle Fries',
-        price: 5.99,
-        quantity: 1,
-        stallId: 'stall-burger'
-      }
-    ],
-    totalAmount: 28.97,
-    status: 'preparing',
-    orderTime: new Date(Date.now() - 600000).toISOString(), // 10 mins ago
-    notes: 'No pickles on one burger.'
-  },
-  {
     id: 'ord-103',
-    stallId: 'stall-wok',
-    stallName: 'Wok & Roll',
-    customerName: 'David Kim',
-    items: [
-      {
-        menuItemId: 'wok-1',
-        name: 'Classic Pad Thai Noodle',
-        price: 11.99,
-        quantity: 1,
-        stallId: 'stall-wok'
-      },
-      {
-        menuItemId: 'wok-2',
-        name: 'Pan-Fried Pork Gyoza (6x)',
-        price: 6.49,
-        quantity: 1,
-        stallId: 'stall-wok'
+    customerUid: DEFAULT_CUSTOMER_UID,
+    customerName: DEFAULT_CUSTOMER_NAME,
+    stand: 'Section 220',
+    seatNumber: 'Row A, Seat 3',
+    kioskIds: ['stall-wok'],
+    kioskOrders: {
+      'stall-wok': {
+        kioskId: 'stall-wok',
+        kioskName: 'Wok & Roll',
+        items: [
+          { menuItemId: 'wok-1', name: 'Classic Pad Thai Noodle', price: 11.99, quantity: 1 },
+          { menuItemId: 'wok-2', name: 'Pan-Fried Pork Gyoza (6x)', price: 6.49, quantity: 1 }
+        ],
+        subtotal: 18.48,
+        status: 'pending'
       }
-    ],
+    },
     totalAmount: 18.48,
-    status: 'pending',
     orderTime: new Date(Date.now() - 180000).toISOString(), // 3 mins ago
-  },
-  {
-    id: 'ord-104',
-    stallId: 'stall-sweet',
-    stallName: 'Sweet Retreat',
-    customerName: 'Alex Mercer',
-    items: [
-      {
-        menuItemId: 'sweet-2',
-        name: 'Classic Brown Sugar Boba',
-        price: 6.50,
-        quantity: 2,
-        stallId: 'stall-sweet'
-      }
-    ],
-    totalAmount: 13.00,
-    status: 'ready',
-    orderTime: new Date(Date.now() - 900000).toISOString(), // 15 mins ago
   }
-];
+  ]
+};
+
+export const initialOrdersFor = (customerUid: string): Order[] => initialOrders[customerUid] || [];
 
 export const defaultWallet: UserWallet = {
-  username: 'Alex Mercer',
+  uid: DEFAULT_CUSTOMER_UID,
   balance: 125.50,
   transactions: [
     {
@@ -300,9 +297,9 @@ export const defaultWallet: UserWallet = {
     },
     {
       id: 'tx-002',
-      amount: 20.98,
+      amount: 33.98,
       type: 'purchase',
-      description: 'Purchase at Taco Del Sol (Order #ord-101)',
+      description: 'Purchase at Taco Del Sol, Sweet Retreat (Order #ord-101)',
       timestamp: new Date(Date.now() - 3600000 * 2).toISOString() // 2 hours ago
     },
     {

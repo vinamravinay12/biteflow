@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { db } from './utils/database';
-import type { Stall } from './types';
+import type { StallSession } from './types';
 import { CustomerPortal } from './components/CustomerPortal';
 import { StallLogin } from './components/StallLogin';
 import { StallDashboard } from './components/StallDashboard';
@@ -9,7 +9,7 @@ import { SuperAdminPortal } from './components/SuperAdminPortal';
 import './App.css';
 
 function App() {
-  const [activeStall, setActiveStall] = useState<Stall | null>(null);
+  const [activeStall, setActiveStall] = useState<StallSession | null>(null);
 
   // Initialize DB and load active session on mount
   useEffect(() => {
@@ -20,7 +20,7 @@ function App() {
     }
   }, []);
 
-  const handleStallLogin = (stall: Stall) => {
+  const handleStallLogin = (stall: StallSession) => {
     setActiveStall(stall);
   };
 

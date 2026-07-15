@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall } from '../types';
+import type { Stall, Match } from '../types';
+import { FIFA_CITIES } from '../data/mockData';
+import { encryptText } from '../utils/crypto';
 import { 
   Store, Plus, Lock, Key, Eye, EyeOff, Trash2, 
-  Check, RefreshCw, BarChart, UserCheck, AlertCircle, LogOut
+  Check, RefreshCw, BarChart, UserCheck, AlertCircle, LogOut,
+  Calendar, MapPin, Edit
 } from 'lucide-react';
 
 export const SuperAdminPortal: React.FC = () => {
@@ -37,16 +40,31 @@ export const SuperAdminPortal: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
 
+  // Section Toggle
+  const [activeSection, setActiveSection] = useState<'stalls' | 'matches'>('stalls');
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [editingStallId, setEditingStallId] = useState<string | null>(null);
+
   // Form states
   const [stallName, setStallName] = useState('');
   const [description, setDescription] = useState('');
+  const [stallCity, setStallCity] = useState(FIFA_CITIES[0]);
   const [ownerUsername, setOwnerUsername] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
   const [logoEmoji, setLogoEmoji] = useState('🍔');
   const [bannerColor, setBannerColor] = useState('#ef4444');
   const [showPasswordMap, setShowPasswordMap] = useState<{ [key: string]: boolean }>({});
+  const [decryptedPasswords, setDecryptedPasswords] = useState<{ [key: string]: string }>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Match creation form states
+  const [matchName, setMatchName] = useState('');
+  const [matchSport] = useState('Football/Soccer');
+  const [matchCity, setMatchCity] = useState(FIFA_CITIES[0]);
+  const [matchDateTime, setMatchDateTime] = useState('');
+  const [selectedStallIds, setSelectedStallIds] = useState<string[]>([]);
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
   const colors = [
     { name: 'Red', value: '#ef4444' },
@@ -66,8 +84,11 @@ export const SuperAdminPortal: React.FC = () => {
     const allItems = await db.getMenuItems();
     setTotalItems(allItems.length);
 
-    const allOrders = await db.getOrders();
+    const allOrders = await db.getAllOrders();
     setTotalOrders(allOrders.length);
+
+    const allMatches = await db.getMatches();
+    setMatches(allMatches);
   };
 
   useEffect(() => {
@@ -77,6 +98,8 @@ export const SuperAdminPortal: React.FC = () => {
   // Autofill username when Stall Name changes
   const handleStallNameChange = (val: string) => {
     setStallName(val);
+    
+    if (editingStallId) return;
     
     const words = val
       .trim()
@@ -111,19 +134,53 @@ export const SuperAdminPortal: React.FC = () => {
     setOwnerPassword(`${adj}-${noun}-${num}`);
   };
 
+  const startEditStall = async (stall: Stall) => {
+    setEditingStallId(stall.id);
+    setStallName(stall.name);
+    setDescription(stall.description);
+    setStallCity(stall.city || FIFA_CITIES[0]);
+    setOwnerUsername(stall.ownerUsername);
+    try {
+      setOwnerPassword(await db.getStallPlainPassword(stall));
+    } catch (e) {
+      console.error('Failed to decrypt stall password for editing:', e);
+      setOwnerPassword('');
+    }
+    setLogoEmoji(stall.logoUrl);
+    setBannerColor(stall.bannerColor);
+    setError('');
+    setSuccess('');
+
+    // Smooth scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditStall = () => {
+    setEditingStallId(null);
+    setStallName('');
+    setDescription('');
+    setStallCity(FIFA_CITIES[0]);
+    setOwnerUsername('');
+    setOwnerPassword('');
+    setLogoEmoji('🍔');
+    setBannerColor('#ef4444');
+    setError('');
+    setSuccess('');
+  };
+
   const handleRegisterStall = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!stallName.trim() || !description.trim() || !ownerUsername.trim() || !ownerPassword.trim()) {
+    if (!stallName.trim() || !description.trim() || !ownerUsername.trim() || !ownerPassword.trim() || !stallCity.trim()) {
       setError('All fields are required.');
       return;
     }
 
     const currentStalls = await db.getStalls();
     const exists = currentStalls.some(
-      s => s.ownerUsername.toLowerCase() === ownerUsername.trim().toLowerCase()
+      s => s.id !== editingStallId && s.ownerUsername.toLowerCase() === ownerUsername.trim().toLowerCase()
     );
 
     if (exists) {
@@ -131,44 +188,148 @@ export const SuperAdminPortal: React.FC = () => {
       return;
     }
 
-    const newStall: Stall = {
-      id: `stall-${Date.now()}`,
-      name: stallName.trim(),
-      description: description.trim(),
-      ownerUsername: ownerUsername.trim().toLowerCase(),
-      ownerPassword: ownerPassword.trim(),
-      logoUrl: logoEmoji,
-      bannerColor: bannerColor,
-      rating: 5.0,
-      active: true
-    };
+    if (editingStallId) {
+      // Edit Mode
+      const existingStall = currentStalls.find(s => s.id === editingStallId);
+      if (existingStall) {
+        const updatedStall: Stall = {
+          ...existingStall,
+          name: stallName.trim(),
+          description: description.trim(),
+          ownerUsername: ownerUsername.trim().toLowerCase(),
+          ownerPasswordEnc: await encryptText(ownerPassword.trim()),
+          logoUrl: logoEmoji,
+          bannerColor: bannerColor,
+          city: stallCity.trim()
+        };
+        await db.updateStall(updatedStall);
+        setDecryptedPasswords(prev => ({ ...prev, [updatedStall.id]: ownerPassword.trim() }));
+      }
+      setSuccess(`Successfully updated Stall "${stallName}"!`);
+      setEditingStallId(null);
+    } else {
+      // Create Mode
+      const newStall = await db.createStall({
+        id: `stall-${Date.now()}`,
+        name: stallName.trim(),
+        description: description.trim(),
+        ownerUsername: ownerUsername.trim().toLowerCase(),
+        ownerPasswordPlain: ownerPassword.trim(),
+        logoUrl: logoEmoji,
+        bannerColor: bannerColor,
+        rating: 5.0,
+        active: true,
+        city: stallCity.trim()
+      });
+      setDecryptedPasswords(prev => ({ ...prev, [newStall.id]: ownerPassword.trim() }));
+      setSuccess(`Successfully created Stall "${stallName}"! Username and Password generated.`);
+    }
 
-    await db.addStall(newStall);
-    setSuccess(`Successfully created Stall "${stallName}"! Username and Password generated.`);
-    
     // Clear form
     setStallName('');
     setDescription('');
+    setStallCity(FIFA_CITIES[0]);
     setOwnerUsername('');
     setOwnerPassword('');
+    setLogoEmoji('🍔');
+    setBannerColor('#ef4444');
     
     await loadData();
   };
 
   const handleDeleteStall = async (stallId: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete the stall "${name}"? This will delete all its configuration.`)) {
-      const allStalls = await db.getStalls();
-      const updated = allStalls.filter(s => s.id !== stallId);
-      await db.saveStalls(updated);
+      await db.deleteStall(stallId);
       await loadData();
     }
   };
 
-  const togglePasswordVisibility = (id: string) => {
-    setShowPasswordMap(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const startEditMatch = (match: Match) => {
+    setEditingMatchId(match.id);
+    setMatchName(match.name);
+    setMatchCity(match.city);
+    setMatchDateTime(match.dateTime);
+    setSelectedStallIds(match.stallIds || []);
+    setError('');
+    setSuccess('');
+
+    // Smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditMatch = () => {
+    setEditingMatchId(null);
+    setMatchName('');
+    setMatchCity(FIFA_CITIES[0]);
+    setMatchDateTime('');
+    setSelectedStallIds([]);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCreateMatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!matchName.trim() || !matchSport.trim() || !matchCity.trim() || !matchDateTime) {
+      setError('All fields are required to create a match.');
+      return;
+    }
+
+    if (editingMatchId) {
+      const updatedMatch: Match = {
+        id: editingMatchId,
+        name: matchName.trim(),
+        sport: matchSport.trim(),
+        city: matchCity.trim(),
+        dateTime: matchDateTime,
+        stallIds: selectedStallIds
+      };
+      await db.updateMatch(updatedMatch);
+      setSuccess(`Successfully updated match "${matchName}"!`);
+      setEditingMatchId(null);
+    } else {
+      const newMatch: Match = {
+        id: `match-${Date.now()}`,
+        name: matchName.trim(),
+        sport: matchSport.trim(),
+        city: matchCity.trim(),
+        dateTime: matchDateTime,
+        stallIds: selectedStallIds
+      };
+      await db.addMatch(newMatch);
+      setSuccess(`Successfully scheduled match "${matchName}"!`);
+    }
+
+    // Reset match form
+    setMatchName('');
+    setMatchCity(FIFA_CITIES[0]);
+    setMatchDateTime('');
+    setSelectedStallIds([]);
+
+    await loadData();
+  };
+
+  const handleDeleteMatch = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to cancel/delete the match "${name}"?`)) {
+      await db.deleteMatch(id);
+      await loadData();
+    }
+  };
+
+  const togglePasswordVisibility = async (stall: Stall) => {
+    const willShow = !showPasswordMap[stall.id];
+    if (willShow && decryptedPasswords[stall.id] === undefined) {
+      try {
+        const plain = await db.getStallPlainPassword(stall);
+        setDecryptedPasswords(prev => ({ ...prev, [stall.id]: plain }));
+      } catch (e) {
+        console.error('Failed to decrypt stall password:', e);
+        return;
+      }
+    }
+    setShowPasswordMap(prev => ({ ...prev, [stall.id]: willShow }));
   };
 
   const toggleStallStatus = async (stallId: string) => {
@@ -325,266 +486,638 @@ export const SuperAdminPortal: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Core Layout: Register on left, Directory list on right */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'flex-start' }} className="dashboard-grid">
-        
-        {/* Left Side: Create Stall & Credentials Generator */}
-        <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={18} color="#a78bfa" /> Create Stall & Credentials
-          </h3>
+      {/* Tabs Selector */}
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0px', marginTop: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSection('stalls');
+            setError('');
+            setSuccess('');
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeSection === 'stalls' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+            fontSize: '1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '0.75rem 1.25rem',
+            borderBottom: activeSection === 'stalls' ? '3px solid var(--accent-cyan)' : '3px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Store size={18} /> Food Stalls Directory
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSection('matches');
+            setError('');
+            setSuccess('');
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeSection === 'matches' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+            fontSize: '1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '0.75rem 1.25rem',
+            borderBottom: activeSection === 'matches' ? '3px solid var(--accent-cyan)' : '3px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Calendar size={18} /> Matches & Venue Stalls
+        </button>
+      </div>
 
-          <form onSubmit={handleRegisterStall} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Food Stall Name
-              </label>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Waffle Wonders"
-                value={stallName}
-                onChange={(e) => handleStallNameChange(e.target.value)}
-              />
-            </div>
+      {activeSection === 'stalls' ? (
+        /* ================= STALLS DIRECTORY SECTION ================= */
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'flex-start' }} className="dashboard-grid">
+          
+          {/* Left Side: Create Stall & Credentials Generator */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {editingStallId ? <Edit size={18} color="var(--accent-cyan)" /> : <Plus size={18} color="#a78bfa" />}
+              {editingStallId ? 'Edit Food Stall' : 'Create Stall & Credentials'}
+            </h3>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Description
-              </label>
-              <textarea
-                className="input-field"
-                placeholder="Brief description of food offerings..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                style={{ resize: 'none', fontFamily: 'inherit' }}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <form onSubmit={handleRegisterStall} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Logo Emoji
+                  Food Stall Name
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Waffle Wonders"
+                  value={stallName}
+                  onChange={(e) => handleStallNameChange(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Description
+                </label>
+                <textarea
+                  className="input-field"
+                  placeholder="Brief description of food offerings..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  style={{ resize: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Stall Location / City
                 </label>
                 <select
                   className="input-field"
-                  value={logoEmoji}
-                  onChange={(e) => setLogoEmoji(e.target.value)}
-                  style={{ fontSize: '1.2rem', padding: '0.55rem' }}
+                  value={stallCity}
+                  onChange={(e) => setStallCity(e.target.value)}
                 >
-                  {emojis.map(e => (
-                    <option key={e} value={e}>{e}</option>
+                  {FIFA_CITIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Branding Color
-                </label>
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                  {colors.map(c => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setBannerColor(c.value)}
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        backgroundColor: c.value,
-                        border: bannerColor === c.value ? '2px solid white' : 'none',
-                        cursor: 'pointer',
-                        boxShadow: bannerColor === c.value ? '0 0 8px ' + c.value : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                      title={c.name}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Generated Credentials Section */}
-            <div style={{ padding: '1rem', background: 'rgba(15, 23, 42, 0.4)', border: '1px solid var(--border-color)', borderRadius: '12px', marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                🔑 Credentials Generator
-              </span>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Generated Stall Username
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                    Logo Emoji
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Key size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="waffle-wonders"
-                      value={ownerUsername}
-                      onChange={(e) => setOwnerUsername(e.target.value.toLowerCase())}
-                      style={{ paddingLeft: '2.25rem', fontSize: '0.8rem', fontFamily: 'monospace' }}
-                    />
+                  <select
+                    className="input-field"
+                    value={logoEmoji}
+                    onChange={(e) => setLogoEmoji(e.target.value)}
+                    style={{ fontSize: '1.2rem', padding: '0.55rem' }}
+                  >
+                    {emojis.map(e => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                    Branding Color
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                    {colors.map(c => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setBannerColor(c.value)}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: c.value,
+                          border: bannerColor === c.value ? '2px solid white' : 'none',
+                          cursor: 'pointer',
+                          boxShadow: bannerColor === c.value ? '0 0 8px ' + c.value : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Merchant Password
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <div style={{ position: 'relative', flex: 1 }}>
-                      <Lock size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+              <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>
+                  Generated Merchant Credentials
+                </span>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Merchant Username (Autofilled)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <Key size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
                       <input
                         type="text"
                         className="input-field"
-                        placeholder="Click Generate ➜"
-                        value={ownerPassword}
-                        onChange={(e) => setOwnerPassword(e.target.value)}
+                        placeholder="waffle-wonders"
+                        value={ownerUsername}
+                        onChange={(e) => setOwnerUsername(e.target.value.toLowerCase())}
                         style={{ paddingLeft: '2.25rem', fontSize: '0.8rem', fontFamily: 'monospace' }}
                       />
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={generatePassword}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                    >
-                      Generate Pass
-                    </button>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Merchant Password
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <Lock size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Click Generate ➜"
+                          value={ownerPassword}
+                          onChange={(e) => setOwnerPassword(e.target.value)}
+                          style={{ paddingLeft: '2.25rem', fontSize: '0.8rem', fontFamily: 'monospace' }}
+                        />
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={generatePassword}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                      >
+                        Generate Pass
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {error && (
-              <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-red)', fontSize: '0.85rem', alignItems: 'center' }}>
-                <AlertCircle size={14} />
-                <span>{error}</span>
-              </div>
-            )}
+              {error && (
+                <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-red)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <AlertCircle size={14} />
+                  <span>{error}</span>
+                </div>
+              )}
 
-            {success && (
-              <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-green)', fontSize: '0.85rem', alignItems: 'center' }}>
-                <Check size={14} />
-                <span>{success}</span>
-              </div>
-            )}
+              {success && (
+                <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-green)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <Check size={14} />
+                  <span>{success}</span>
+                </div>
+              )}
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
-              Register Stall & Save Credentials
-            </button>
-          </form>
-        </div>
-
-        {/* Right Side: Directory and Credentials Sharing Center */}
-        <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Store size={18} color="var(--accent-cyan)" /> Stalls Credentials & Status Directory
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-            Review merchant accounts, copy generated passwords to share with stall owners, or manage activation status.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {stalls.map(s => {
-              const isShowingPass = showPasswordMap[s.id] || false;
-              return (
-                <div 
-                  key={s.id} 
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
                   style={{ 
-                    border: '1px solid var(--border-color)', 
-                    borderRadius: '12px', 
-                    padding: '1rem',
-                    background: s.active ? 'rgba(255,255,255,0.01)' : 'rgba(239, 68, 68, 0.02)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.75rem'
+                    flex: 1, 
+                    padding: '0.75rem',
+                    background: editingStallId ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
                   }}
                 >
-                  {/* Top line details */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '2rem' }}>{s.logoUrl}</span>
-                      <div>
-                        <h4 style={{ fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>{s.name}</h4>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {s.id.split('-')[1]}</span>
-                      </div>
-                    </div>
+                  {editingStallId ? 'Update Stall Details' : 'Register Stall & Save Credentials'}
+                </button>
+                {editingStallId && (
+                  <button 
+                    type="button" 
+                    onClick={cancelEditStall} 
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.75rem 1.25rem' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
 
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      <button 
-                        onClick={() => toggleStallStatus(s.id)}
-                        className="btn btn-secondary"
-                        style={{ 
-                          padding: '0.25rem 0.5rem', 
-                          fontSize: '0.7rem', 
-                          color: s.active ? 'var(--accent-green)' : 'var(--accent-red)',
-                          borderColor: s.active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                          borderRadius: '6px'
-                        }}
-                      >
-                        {s.active ? 'Active' : 'Suspended'}
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteStall(s.id, s.name)}
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem', borderRadius: '6px', color: 'var(--accent-red)', borderColor: 'rgba(239, 68, 68, 0.1)' }}
-                        title="Delete Stall"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
+          {/* Right Side: Directory and Credentials Sharing Center */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Store size={18} color="var(--accent-cyan)" /> Stalls Credentials & Status Directory
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Review merchant accounts, copy generated passwords to share with stall owners, or manage activation status.
+            </p>
 
-                  {/* Description */}
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.4 }}>
-                    {s.description}
-                  </p>
-
-                  {/* Credentials details boxes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {stalls.map(s => {
+                const isShowingPass = showPasswordMap[s.id] || false;
+                return (
                   <div 
+                    key={s.id} 
                     style={{ 
-                      padding: '0.75rem', 
-                      background: 'rgba(15, 23, 42, 0.6)', 
-                      border: '1px solid rgba(255,255,255,0.03)', 
-                      borderRadius: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem' 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '12px', 
+                      padding: '1rem',
+                      background: s.active ? 'rgba(255,255,255,0.01)' : 'rgba(239, 68, 68, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Stall Username:</span>
-                      <code style={{ color: 'var(--accent-cyan)', fontWeight: 600, fontFamily: 'monospace' }}>{s.ownerUsername}</code>
-                    </div>
+                    {/* Top line details */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '2rem' }}>{s.logoUrl}</span>
+                        <div>
+                          <h4 style={{ fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>{s.name}</h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {s.id.split('-')[1]}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>•</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <MapPin size={10} /> {s.city || 'Mumbai'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Merchant Password:</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <code style={{ color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                          {isShowingPass ? s.ownerPassword : '••••••••••••'}
-                        </code>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
                         <button 
-                          type="button"
-                          onClick={() => togglePasswordVisibility(s.id)}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.1rem', display: 'flex' }}
-                          title={isShowingPass ? 'Hide password' : 'Show password'}
+                          onClick={() => toggleStallStatus(s.id)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: s.active ? 'var(--accent-green)' : 'var(--text-muted)' }}
                         >
-                          {isShowingPass ? <EyeOff size={12} /> : <Eye size={12} />}
+                          {s.active ? 'Active' : 'Disabled'}
+                        </button>
+                        <button 
+                          onClick={() => startEditStall(s)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: 'var(--accent-cyan)', borderColor: 'rgba(6, 182, 212, 0.3)', background: 'rgba(6, 182, 212, 0.08)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                          title="Edit Stall Details"
+                        >
+                          <Edit size={12} /> Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteStall(s.id, s.name)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem', color: 'var(--accent-red)' }}
+                          title="Delete Stall"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
-      </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
+                      {s.description}
+                    </p>
+
+                    {/* Credentials details boxes */}
+                    <div 
+                      style={{ 
+                        padding: '0.75rem', 
+                        background: 'rgba(15, 23, 42, 0.6)', 
+                        border: '1px solid rgba(255,255,255,0.03)', 
+                        borderRadius: '8px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '0.5rem' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Stall Username:</span>
+                        <code style={{ color: 'var(--accent-cyan)', fontWeight: 600, fontFamily: 'monospace' }}>{s.ownerUsername}</code>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Merchant Password:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <code style={{ color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                            {isShowingPass ? (decryptedPasswords[s.id] || 'Decrypting…') : '••••••••••••'}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(s)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.1rem', display: 'flex' }}
+                            title={isShowingPass ? 'Hide password' : 'Show password'}
+                          >
+                            {isShowingPass ? <EyeOff size={12} /> : <Eye size={12} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+        </div>
+      ) : (
+        /* ================= MATCHES & ROSTER MANAGEMENT SECTION ================= */
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'flex-start' }} className="dashboard-grid">
+          
+          {/* Left Column: Create Match & Roster selector */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {editingMatchId ? <Edit size={18} color="var(--accent-cyan)" /> : <Plus size={18} color="#a78bfa" />}
+              {editingMatchId ? 'Edit Match Details' : 'Schedule a Match/Game'}
+            </h3>
+
+            <form onSubmit={handleCreateMatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Match/Game Name
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. India vs Pakistan"
+                  value={matchName}
+                  onChange={(e) => setMatchName(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                    City / Venue
+                  </label>
+                  <select
+                    className="input-field"
+                    value={matchCity}
+                    onChange={(e) => {
+                      setMatchCity(e.target.value);
+                      setSelectedStallIds([]);
+                    }}
+                  >
+                    {FIFA_CITIES.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                    Match Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="input-field"
+                    value={matchDateTime}
+                    onChange={(e) => setMatchDateTime(e.target.value)}
+                    style={{ fontFamily: 'inherit' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Assign Stalls for this Match
+                </label>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
+                  Only showing active food stalls located in <strong>{matchCity || 'the specified city'}</strong>:
+                </p>
+
+                <div 
+                  style={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto', 
+                    padding: '0.75rem', 
+                    background: 'rgba(0,0,0,0.2)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem'
+                  }}
+                >
+                  {stalls.filter(s => s.active && (s.city || 'Mumbai').trim().toLowerCase() === matchCity.trim().toLowerCase()).length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '1rem 0' }}>
+                      No active food stalls registered in "{matchCity}" yet. Add stalls for this city first!
+                    </p>
+                  ) : (
+                    stalls.filter(s => s.active && (s.city || 'Mumbai').trim().toLowerCase() === matchCity.trim().toLowerCase()).map(s => {
+                      const isChecked = selectedStallIds.includes(s.id);
+                      return (
+                        <label 
+                          key={s.id} 
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.75rem', 
+                            padding: '0.4rem 0.6rem', 
+                            background: isChecked ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedStallIds(prev => [...prev, s.id]);
+                              } else {
+                                setSelectedStallIds(prev => prev.filter(id => id !== s.id));
+                              }
+                            }}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '1.25rem' }}>{s.logoUrl}</span>
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontWeight: 500, color: 'white' }}>{s.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>{(s.description || '').substring(0, 45)}...</span>
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {error && (
+                <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-red)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <AlertCircle size={14} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {success && (
+                <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--accent-green)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <Check size={14} />
+                  <span>{success}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ 
+                    flex: 1, 
+                    padding: '0.75rem',
+                    background: editingMatchId ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
+                  }}
+                >
+                  {editingMatchId ? 'Update Match Details' : 'Schedule Match & Lock Roster'}
+                </button>
+                {editingMatchId && (
+                  <button 
+                    type="button" 
+                    onClick={cancelEditMatch} 
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.75rem 1.25rem' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Right Column: Scheduled Matches Roster */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Calendar size={18} color="var(--accent-cyan)" /> Scheduled Games & Stalls Roster
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Check match city venues, game details, and verify which food court kiosks are active at each match.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {matches.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', textAlign: 'center', padding: '3rem 0' }}>
+                  No matches scheduled yet.
+                </p>
+              ) : (
+                matches.map(m => {
+                  const matchDate = new Date(m.dateTime);
+                  const formattedDate = isNaN(matchDate.getTime()) 
+                    ? m.dateTime 
+                    : matchDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' @ ' + 
+                      matchDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+                  return (
+                    <div 
+                      key={m.id}
+                      style={{
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        padding: '1.25rem',
+                        background: 'rgba(255,255,255,0.01)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <span className="badge badge-info" style={{ background: 'rgba(6, 182, 212, 0.1)', color: 'var(--accent-cyan)', fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>
+                            {m.sport}
+                          </span>
+                          <h4 style={{ fontWeight: 700, fontSize: '1.1rem', margin: '0.35rem 0 0.15rem', color: 'white' }}>{m.name}</h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><MapPin size={12} /> {m.city}</span>
+                            <span>•</span>
+                            <span>{formattedDate}</span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button 
+                            onClick={() => startEditMatch(m)}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', color: 'var(--accent-cyan)', borderColor: 'rgba(6, 182, 212, 0.3)', background: 'rgba(6, 182, 212, 0.08)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            title="Edit Match Details"
+                          >
+                            <Edit size={12} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMatch(m.id, m.name)}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem', color: 'var(--accent-red)', borderColor: 'rgba(239, 68, 68, 0.1)' }}
+                            title="Cancel Match"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>
+                          Available Food Stalls ({m.stallIds?.length || 0}):
+                        </span>
+                        {(!m.stallIds || m.stallIds.length === 0) ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-red)', fontStyle: 'italic' }}>
+                            No food stalls assigned to this match.
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {m.stallIds.map(sid => {
+                              const matchStall = stalls.find(s => s.id === sid);
+                              if (!matchStall) return null;
+                              return (
+                                <span 
+                                  key={sid}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    fontSize: '0.75rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-primary)'
+                                  }}
+                                >
+                                  <span>{matchStall.logoUrl}</span>
+                                  <span>{matchStall.name}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
 
     </div>
   );

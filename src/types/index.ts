@@ -1,14 +1,29 @@
+export type UserRole = 'admin' | 'foodkiosk' | 'customer';
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: string;
+}
+
 export interface Stall {
   id: string;
   name: string;
   description: string;
   ownerUsername: string;
-  ownerPassword: string; // Added password for merchant login
+  ownerPasswordEnc: string; // AES-GCM encrypted password (base64 iv+ciphertext), decrypted client-side
   logoUrl: string;
   bannerColor: string; // Tailwind-like color or hex code
   rating: number;
   active: boolean;
+  city: string; // City association for the stall
 }
+
+// Stall shape used for the merchant's logged-in session — deliberately omits
+// the encrypted password so it never leaves the admin password-management flow.
+export type StallSession = Omit<Stall, 'ownerPasswordEnc'>;
 
 export interface MenuItem {
   id: string;
@@ -23,24 +38,50 @@ export interface MenuItem {
   prepTime: number; // in minutes
 }
 
-export interface OrderItem {
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+
+export interface OrderLineItem {
   menuItemId: string;
   name: string;
   price: number;
   quantity: number;
-  stallId: string;
+}
+
+export interface KioskOrderEntry {
+  kioskId: string;
+  kioskName: string;
+  items: OrderLineItem[];
+  subtotal: number;
+  status: OrderStatus;
 }
 
 export interface Order {
   id: string;
-  stallId: string;
-  stallName: string;
+  customerUid: string;
   customerName: string;
-  items: OrderItem[];
+  // Match details (a single checkout is tied to one match)
+  matchId?: string;
+  matchName?: string;
+  matchCity?: string;
+  matchDateTime?: string;
+  // Delivery details
+  stand?: string;
+  seatNumber?: string;
+  // Per-kiosk breakdown: one order can contain items from multiple kiosks
+  kioskIds: string[]; // denormalized for array-contains querying (e.g. collectionGroup by kiosk)
+  kioskOrders: Record<string, KioskOrderEntry>; // keyed by kioskId for O(1) partial updates
   totalAmount: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   orderTime: string;
   notes?: string;
+}
+
+export interface Match {
+  id: string;
+  name: string;
+  sport: string;
+  city: string;
+  dateTime: string;
+  stallIds: string[]; // Stalls present at this match
 }
 
 export interface WalletTransaction {
@@ -52,7 +93,7 @@ export interface WalletTransaction {
 }
 
 export interface UserWallet {
-  username: string;
+  uid: string;
   balance: number;
   transactions: WalletTransaction[];
 }
