@@ -1887,9 +1887,9 @@ Rules:
             {orders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
                 <ShoppingBag size={48} style={{ color: 'var(--text-muted)', opacity: 0.3, marginBottom: '1rem' }} />
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>No orders placed yet</h3>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>{language === 'es' ? 'Aún no se han realizado pedidos' : language === 'fr' ? 'Aucune commande passée pour le moment' : language === 'de' ? 'Noch keine Bestellungen aufgegeben' : language === 'it' ? 'Nessun ordine effettuato' : language === 'pt' ? 'Nenhum pedido feito ainda' : language === 'nl' ? 'Nog geen bestellingen geplaatst' : language === 'ar' ? 'لم يتم تقديم أي طلبات بعد' : 'No orders placed yet'}</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                  Browse our food kiosks and place your first order to track it here!
+                  {language === 'es' ? '¡Navega por nuestros puestos de comida y realiza tu primer pedido para rastrearlo aquí!' : language === 'fr' ? 'Parcourez nos kiosques alimentaires et passez votre première commande pour la suivre ici!' : language === 'de' ? 'Stöbern Sie in unseren Essenskiosken und geben Sie Ihre erste Bestellung auf, um sie hier zu verfolgen!' : language === 'it' ? 'Sfoglia i nostri chioschi e invia il tuo primo ordine per tracciarlo qui!' : language === 'pt' ? 'Navegue pelos nossos quiosques e faça seu primeiro pedido para rastreá-lo aqui!' : language === 'nl' ? 'Blader door onze eetkiosken en plaats je eerste bestelling om deze hier te volgen!' : language === 'ar' ? 'تصفح أكشاك الطعام لدينا وقدم طلبك الأول لتتبعه هنا!' : 'Browse our food kiosks and place your first order to track it here!'}
                 </p>
               </div>
             ) : (
@@ -1912,11 +1912,11 @@ Rules:
                       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Order ID: #{order.id.split('-')[1] || order.id}</span>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{USER_TRANSLATIONS[language].orderIdLabel || 'Order ID'}: #{order.id.split('-')[1] || order.id}</span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({order.id})</span>
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                            Placed on {new Date(order.orderTime).toLocaleString()}
+                            {language === 'es' ? 'Realizado el' : language === 'fr' ? 'Passée le' : language === 'de' ? 'Aufgegeben am' : language === 'it' ? 'Effettuato il' : language === 'pt' ? 'Feito em' : language === 'nl' ? 'Geplaatst op' : language === 'ar' ? 'تم تقديمه في' : 'Placed on'} {new Date(order.orderTime).toLocaleString()}
                             {order.stand && order.seatNumber && (
                               <span style={{ marginLeft: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
                                 📍 {order.stand}, {order.seatNumber}
@@ -1925,7 +1925,7 @@ Rules:
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grand Total</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{language === 'es' ? 'Gran Total' : language === 'fr' ? 'Total global' : language === 'de' ? 'Gesamtsumme' : language === 'it' ? 'Totale complessivo' : language === 'pt' ? 'Total Geral' : language === 'nl' ? 'Eindtotaal' : language === 'ar' ? 'المجموع الكلي' : 'Grand Total'}</div>
                           <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.totalAmount.toFixed(2)}</strong>
                         </div>
                       </div>
@@ -1957,13 +1957,13 @@ Rules:
                                   kioskOrder.status === 'completed' ? 'badge-secondary' :
                                   'badge-danger'
                                 }`} style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-                                  {kioskOrder.status === 'ready' ? 'Ready for Pickup 🎉' : kioskOrder.status}
+                                  {kioskOrder.status === 'ready' ? (USER_TRANSLATIONS[language].progressStepReady + ' 🎉') : kioskOrder.status === 'pending' ? USER_TRANSLATIONS[language].orderStatusPending : kioskOrder.status === 'preparing' ? USER_TRANSLATIONS[language].orderStatusPreparing : kioskOrder.status === 'completed' ? USER_TRANSLATIONS[language].orderStatusCompleted : USER_TRANSLATIONS[language].orderStatusCancelled}
                                 </span>
                               </div>
 
                               {/* Items from this kiosk */}
                               <div style={{ paddingLeft: '0.25rem', marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>Items Ordered</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>{language === 'es' ? 'Artículos Pedidos' : language === 'fr' ? 'Articles Commandés' : language === 'de' ? 'Bestellte Artikel' : language === 'it' ? 'Articoli Ordinati' : language === 'pt' ? 'Itens Pedidos' : language === 'nl' ? 'Bestelde Items' : language === 'ar' ? 'الأصناف المطلوبة' : 'Items Ordered'}</div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                   {kioskOrder.items.map((item, idx) => (
                                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
@@ -2005,9 +2005,9 @@ Rules:
                               </div>
                               
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                <span style={{ color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' : '' }}>Received (Pending)</span>
-                                <span style={{ color: kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>Preparing (Kitchen)</span>
-                                <span style={{ color: kioskOrder.status === 'ready' ? 'var(--accent-green)' : '' }}>Ready for Pickup</span>
+                                <span style={{ color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' : '' }}>{USER_TRANSLATIONS[language].progressStepReceived}</span>
+                                <span style={{ color: kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>{USER_TRANSLATIONS[language].progressStepPreparing}</span>
+                                <span style={{ color: kioskOrder.status === 'ready' ? 'var(--accent-green)' : '' }}>{USER_TRANSLATIONS[language].progressStepReady}</span>
                               </div>
 
                               {kioskOrder.status === 'cancelled' && kioskOrder.declineReason && (
@@ -2021,7 +2021,7 @@ Rules:
                                   color: '#f87171',
                                   textAlign: 'left'
                                 }}>
-                                  🚫 <strong>Declined:</strong> {kioskOrder.declineReason}
+                                  🚫 <strong>{language === 'es' ? 'Rechazado:' : language === 'fr' ? 'Décliné:' : language === 'de' ? 'Abgelehnt:' : language === 'it' ? 'Rifiutato:' : language === 'pt' ? 'Recusado:' : language === 'nl' ? 'Geweigerd:' : language === 'ar' ? 'تم الرفض:' : 'Declined:'}</strong> {kioskOrder.declineReason}
                                 </div>
                               )}
                             </div>
@@ -2076,7 +2076,7 @@ Rules:
             {/* Sidebar Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', background: 'rgba(3, 7, 18, 0.4)' }}>
               <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ShoppingBag size={18} color="var(--accent-cyan)" /> Your Cart & Wallet
+                <ShoppingBag size={18} color="var(--accent-cyan)" /> {language === 'es' ? 'Tu Carrito y Billetera' : language === 'fr' ? 'Votre Panier & Portefeuille' : language === 'de' ? 'Ihr Warenkorb & Wallet' : language === 'it' ? 'Il tuo Carrello e Portafoglio' : language === 'pt' ? 'Seu Carrinho e Carteira' : language === 'nl' ? 'Jouw Winkelwagen & Wallet' : language === 'ar' ? 'حقيبة التسوق والمحفظة' : 'Your Cart & Wallet'}
               </h3>
               <button 
                 onClick={() => setShowCart(false)}
@@ -2101,7 +2101,7 @@ Rules:
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Wallet size={16} color="var(--accent-cyan)" />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Wallet Balance</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{USER_TRANSLATIONS[language].walletBalance || 'Wallet Balance'}</span>
                   </div>
                   <strong className="font-display" style={{ fontSize: '1.35rem', color: 'var(--accent-green)' }}>
                     ${wallet.balance.toFixed(2)}
@@ -2110,7 +2110,7 @@ Rules:
 
                 {/* Quick Add Funds Buttons */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Top Up Balance:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{language === 'es' ? 'Recargar Saldo:' : language === 'fr' ? 'Recharger le solde:' : language === 'de' ? 'Guthaben aufladen:' : language === 'it' ? 'Ricarica Saldo:' : language === 'pt' ? 'Recarregar Saldo:' : language === 'nl' ? 'Saldo Opwaarderen:' : language === 'ar' ? 'شحن الرصيد:' : 'Top Up Balance:'}</span>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.35rem' }}>
                     {[10, 20, 50, 100].map(amt => (
                       <button
@@ -2136,15 +2136,15 @@ Rules:
               {/* Items List */}
               <div>
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Cart Items</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{cart.reduce((s, c) => s + c.quantity, 0)} items</span>
+                  <span>{language === 'es' ? 'Artículos del Carrito' : language === 'fr' ? 'Articles du panier' : language === 'de' ? 'Warenkorb-Artikel' : language === 'it' ? 'Articoli del Carrello' : language === 'pt' ? 'Itens do Carrinho' : language === 'nl' ? 'Winkelwagen Items' : language === 'ar' ? 'أصناف السلة' : 'Cart Items'}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{cart.reduce((s, c) => s + c.quantity, 0)} {language === 'es' ? 'artículos' : language === 'fr' ? 'articles' : language === 'de' ? 'Artikel' : language === 'it' ? 'articoli' : language === 'pt' ? 'itens' : language === 'nl' ? 'items' : language === 'ar' ? 'أصناف' : 'items'}</span>
                 </h4>
 
                 {cart.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                     <ShoppingBag size={32} style={{ color: 'var(--text-muted)', opacity: 0.4, marginBottom: '0.5rem' }} />
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Your cart is empty.</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>Select food items from the catalog.</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{USER_TRANSLATIONS[language].emptyCart || 'Your cart is empty.'}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>{language === 'es' ? 'Selecciona alimentos del catálogo.' : language === 'fr' ? 'Sélectionnez des articles dans le catalogue.' : language === 'de' ? 'Wählen Sie Speisen aus dem Katalog.' : language === 'it' ? 'Seleziona articoli dal catalogo.' : language === 'pt' ? 'Selecione alimentos do catálogo.' : language === 'nl' ? 'Selecteer gerechten uit de catalogus.' : language === 'ar' ? 'اختر أصناف الطعام من القائمة.' : 'Select food items from the catalog.'}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -2205,7 +2205,7 @@ Rules:
               {cart.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.85rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    🏟️ Stadium Delivery Details
+                    🏟️ {language === 'es' ? 'Detalles de Entrega en el Estadio' : language === 'fr' ? 'Détails de Livraison au Stade' : language === 'de' ? 'Stadion-Lieferdetails' : language === 'it' ? 'Dettagli di Consegna allo Stadio' : language === 'pt' ? 'Detalhes de Entrega no Estádio' : language === 'nl' ? 'Stadion Bezorgdetails' : language === 'ar' ? 'تفاصيل التوصيل في الملعب' : 'Stadium Delivery Details'}
                   </span>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -2244,11 +2244,11 @@ Rules:
               {cart.length > 0 && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '0.4rem' }}>
-                    Special Instructions (Cooking Notes)
+                    {USER_TRANSLATIONS[language].notesLabel || 'Special Notes / Instructions'}
                   </label>
                   <textarea
                     className="input-field"
-                    placeholder="e.g. No jalapeños, extra spicy, sauce on the side..."
+                    placeholder={USER_TRANSLATIONS[language].notesPlaceholder || 'e.g. Extra sauce, no onions...'}
                     value={checkoutNotes}
                     onChange={(e) => setCheckoutNotes(e.target.value)}
                     rows={2}
@@ -2260,11 +2260,11 @@ Rules:
               {/* Wallet Transactions History List */}
               <div>
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <History size={14} /> Wallet Transaction History
+                  <History size={14} /> {language === 'es' ? 'Historial de Transacciones de Billetera' : language === 'fr' ? 'Historique des transactions du portefeuille' : language === 'de' ? 'Wallet-Transaktionsverlauf' : language === 'it' ? 'Cronologia delle transazioni del portafoglio' : language === 'pt' ? 'Histórico de Transações da Carteira' : language === 'nl' ? 'Wallet Transactiegeschiedenis' : language === 'ar' ? 'سجل معاملات المحفظة' : 'Wallet Transaction History'}
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                   {wallet.transactions.length === 0 ? (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No transactions recorded.</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{language === 'es' ? 'No se registraron transacciones.' : language === 'fr' ? 'Aucune transaction enregistrée.' : language === 'de' ? 'Keine Transaktionen aufgezeichnet.' : language === 'it' ? 'Nessuna transazione registrata.' : language === 'pt' ? 'Nenhuma transação registrada.' : language === 'nl' ? 'Geen transacties geregistreerd.' : language === 'ar' ? 'لم يتم تسجيل أي معاملات.' : 'No transactions recorded.'}</p>
                   ) : (
                     wallet.transactions.map(tx => (
                       <div 
@@ -2280,7 +2280,15 @@ Rules:
                         }}
                       >
                         <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
-                          <p style={{ fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</p>
+                          <p style={{ fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {tx.description.includes('Loaded funds')
+                              ? (language === 'es' ? 'Fondos cargados a través de pasarela simulada' : language === 'fr' ? 'Fonds chargés via une passerelle simulée' : language === 'de' ? 'Guthaben über simulierte Schnittstelle aufgeladen' : language === 'it' ? 'Fondi caricati tramite gateway simulato' : language === 'pt' ? 'Saldo carregado via gateway simulado' : language === 'nl' ? 'Geld opgeladen via gesimuleerde gateway' : language === 'ar' ? 'تم شحن الرصيد عبر بوابة الدفع' : tx.description)
+                              : tx.description.includes('Multi-kiosk food purchase')
+                              ? (language === 'es' ? `Compra en puestos (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'fr' ? `Achat multi-kiosques (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'de' ? `Kauf an mehreren Kiosken (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'it' ? `Acquisto chioschi multipli (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'pt' ? `Compra em quiosques (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'nl' ? `Multi-kiosk aankoop (${tx.description.split('(')[1]?.split(')')[0] || ''})` : language === 'ar' ? `شراء من عدة أكشاك (${tx.description.split('(')[1]?.split(')')[0] || ''})` : tx.description)
+                              : tx.description.includes('Refund')
+                              ? (language === 'es' ? 'Reembolso por pedido cancelado' : language === 'fr' ? 'Remboursement de commande annulée' : language === 'de' ? 'Rückerstattung für stornierte Bestellung' : language === 'it' ? 'Rimborso per ordine annullato' : language === 'pt' ? 'Reembolso por pedido cancelado' : language === 'nl' ? 'Terugbetaling voor geannuleerde bestelling' : language === 'ar' ? 'استرداد قيمة الطلب الملغى' : tx.description)
+                              : tx.description}
+                          </p>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
                             {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -2303,7 +2311,7 @@ Rules:
             {cart.length > 0 && (
               <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', background: 'rgba(3, 7, 18, 0.6)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Total Amount:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{USER_TRANSLATIONS[language].total || 'Total'}:</span>
                   <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${cartTotal.toFixed(2)}</strong>
                 </div>
 
@@ -2321,7 +2329,7 @@ Rules:
                     gap: '0.5rem'
                   }}>
                     <Info size={14} />
-                    <span>Insufficient funds! Please top up above.</span>
+                    <span>{USER_TRANSLATIONS[language].insufficientFunds || 'Insufficient funds! Please top up above.'}</span>
                   </div>
                 )}
 
@@ -2337,7 +2345,7 @@ Rules:
                     cursor: wallet.balance < cartTotal ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  Confirm & Place Order (${cartTotal.toFixed(2)})
+                  {language === 'es' ? 'Confirmar y Realizar Pedido' : language === 'fr' ? 'Confirmer & Passer Commande' : language === 'de' ? 'Bestätigen & Bestellen' : language === 'it' ? 'Conferma e Invia Ordine' : language === 'pt' ? 'Confirmar e Fazer Pedido' : language === 'nl' ? 'Bevestigen & Bestellen' : language === 'ar' ? 'تأكيد وتقديم الطلب' : 'Confirm & Place Order'} (${cartTotal.toFixed(2)})
                 </button>
               </div>
             )}
