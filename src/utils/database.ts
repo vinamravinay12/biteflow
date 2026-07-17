@@ -3,7 +3,7 @@ import type {
 } from '../types';
 import { initialStalls, initialMenuItems, initialOrdersFor, defaultWallet, initialMatches, type SeedStall } from '../data/mockData';
 import { ADMIN_UID, DEFAULT_CUSTOMER_UID, DEFAULT_CUSTOMER_NAME } from './constants';
-import { encryptText, decryptText } from './crypto';
+import { encryptText, decryptText, timingSafeEqual } from './crypto';
 import { db as firestoreDb } from './firebase';
 import {
   collection, collectionGroup, doc, getDoc, getDocs, setDoc,
@@ -279,7 +279,7 @@ export const db = {
     if (!stall) return null;
     try {
       const plain = await db.getStallPlainPassword(stall);
-      return plain === password ? stall : null;
+      return timingSafeEqual(plain, password) ? stall : null;
     } catch (e) {
       console.error("Failed to verify stall credentials:", e);
       return null;
