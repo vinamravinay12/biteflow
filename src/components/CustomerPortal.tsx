@@ -221,6 +221,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Seat Map modal state
+  const [showSeatMapModal, setShowSeatMapModal] = useState(false);
+  const [tempStandName, setTempStandName] = useState('West Stand');
+  const [tempSeatNumber, setTempSeatNumber] = useState('A-1');
+
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStallId, setSelectedStallId] = useState<string>('all');
@@ -1625,6 +1630,34 @@ Rules:
                             </div>
                           </div>
 
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTempStandName(standName || 'West Stand');
+                              setTempSeatNumber(seatNumber || 'A-1');
+                              setShowSeatMapModal(true);
+                            }}
+                            className="btn btn-secondary"
+                            style={{
+                              width: '100%',
+                              padding: '0.4rem',
+                              fontSize: '0.7rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.3rem',
+                              background: 'rgba(6, 182, 212, 0.08)',
+                              border: '1px solid rgba(6, 182, 212, 0.3)',
+                              color: 'var(--accent-cyan)',
+                              cursor: 'pointer',
+                              borderRadius: '6px',
+                              marginTop: '0.5rem',
+                              marginBottom: '0.5rem'
+                            }}
+                          >
+                            🗺️ {language === 'es' ? 'Seleccionar Asiento en el Mapa' : language === 'fr' ? 'Choisir sur le plan' : language === 'de' ? 'Sitzplan öffnen' : language === 'it' ? 'Mappa dei posti' : language === 'pt' ? 'Ver no mapa' : language === 'nl' ? 'Sitzplan openen' : language === 'ar' ? 'اختر مقعدك على الخريطة' : 'Select Seat on Map'}
+                          </button>
+
                           {wallet.balance < cartTotal && (
                             <div style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem', color: '#f87171' }}>
                               Insufficient wallet balance! Top up in the header widget.
@@ -2265,6 +2298,33 @@ Rules:
                       />
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempStandName(standName || 'West Stand');
+                      setTempSeatNumber(seatNumber || 'A-1');
+                      setShowSeatMapModal(true);
+                    }}
+                    className="btn btn-secondary"
+                    style={{
+                      width: '100%',
+                      padding: '0.45rem',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      background: 'rgba(6, 182, 212, 0.08)',
+                      border: '1px solid rgba(6, 182, 212, 0.3)',
+                      color: 'var(--accent-cyan)',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      marginTop: '0.4rem'
+                    }}
+                  >
+                    🗺️ {language === 'es' ? 'Seleccionar Asiento en el Mapa' : language === 'fr' ? 'Choisir sur le plan' : language === 'de' ? 'Sitzplan öffnen' : language === 'it' ? 'Mappa dei posti' : language === 'pt' ? 'Ver no mapa' : language === 'nl' ? 'Sitzplan openen' : language === 'ar' ? 'اختر مقعدك على الخريطة' : 'Select Seat on Map'}
+                  </button>
                 </div>
               )}
 
@@ -2462,6 +2522,192 @@ Rules:
                 <Sparkles size={12} color="var(--accent-orange)" /> Tip: Switch to Stall Admin view to see your orders in real-time!
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= INTERACTIVE SEAT MAP MODAL ================= */}
+      {showSeatMapModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(3, 7, 18, 0.88)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+          boxSizing: 'border-box'
+        }}>
+          <div 
+            className="glass-panel" 
+            style={{ 
+              maxWidth: '560px', 
+              width: '100%', 
+              padding: '2rem', 
+              borderRadius: '24px', 
+              textAlign: 'center',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+              border: '1px solid var(--border-color-glow)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box'
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🏟️ {language === 'es' ? 'Mapa de Asientos del Estadio' : language === 'fr' ? 'Plan des Sièges du Stade' : language === 'de' ? 'Stadion-Sitzplan' : language === 'it' ? 'Mappa dei Posti dello Stadio' : language === 'pt' ? 'Mapa de Assentos do Estádio' : language === 'nl' ? 'Stadion Plattegrond' : language === 'ar' ? 'خريطة مقاعد الملعب' : 'Stadium Seating Map'}
+              </h3>
+              <button 
+                onClick={() => setShowSeatMapModal(false)}
+                aria-label="Close Seat Map"
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Instruction */}
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+              {language === 'es' ? 'Selecciona un sector del estadio y tu asiento:' : language === 'fr' ? 'Choisissez un secteur du stade et votre siège :' : language === 'de' ? 'Wählen Sie einen Stadionbereich und Ihren Sitzplatz:' : language === 'it' ? 'Seleziona un settore dello stadio e il tuo posto:' : language === 'pt' ? 'Selecione um setor do estádio e seu assento:' : language === 'nl' ? 'Selecteer een vak en een stoelnummer:' : language === 'ar' ? 'اختر قطاعاً في الملعب ورقم مقعدك:' : 'Select a stadium stand section and click on your seat:'}
+            </p>
+
+            {/* Visual Stadium Ring (SVG) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', position: 'relative' }}>
+              <svg width="180" height="180" viewBox="0 0 200 200" style={{ transform: 'rotate(-45deg)' }}>
+                {/* Center Pitch */}
+                <rect x="75" y="75" width="50" height="50" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" strokeWidth="2" rx="4" />
+                <circle cx="100" cy="100" r="12" fill="none" stroke="var(--accent-green)" strokeWidth="1.5" />
+                
+                {/* Wedges representing Stands */}
+                <path 
+                  d="M 100 100 L 20 20 A 113.14 113.14 0 0 1 180 20 Z" 
+                  fill={tempStandName.includes('North') ? 'rgba(6, 182, 212, 0.25)' : 'rgba(255,255,255,0.03)'} 
+                  stroke={tempStandName.includes('North') ? 'var(--accent-cyan)' : 'var(--border-color)'}
+                  strokeWidth="2"
+                  cursor="pointer"
+                  onClick={() => setTempStandName('North Stand')}
+                  style={{ transition: 'all 0.2s' }}
+                />
+                
+                <path 
+                  d="M 100 100 L 180 20 A 113.14 113.14 0 0 1 180 180 Z" 
+                  fill={tempStandName.includes('East') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)'} 
+                  stroke={tempStandName.includes('East') ? 'var(--accent-green)' : 'var(--border-color)'}
+                  strokeWidth="2"
+                  cursor="pointer"
+                  onClick={() => setTempStandName('East Stand')}
+                  style={{ transition: 'all 0.2s' }}
+                />
+                
+                <path 
+                  d="M 100 100 L 180 180 A 113.14 113.14 0 0 1 20 180 Z" 
+                  fill={tempStandName.includes('South') ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255,255,255,0.03)'} 
+                  stroke={tempStandName.includes('South') ? 'var(--accent-orange)' : 'var(--border-color)'}
+                  strokeWidth="2"
+                  cursor="pointer"
+                  onClick={() => setTempStandName('South Stand')}
+                  style={{ transition: 'all 0.2s' }}
+                />
+                
+                <path 
+                  d="M 100 100 L 20 180 A 113.14 113.14 0 0 1 20 20 Z" 
+                  fill={tempStandName.includes('West') ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)'} 
+                  stroke={tempStandName.includes('West') ? 'var(--accent-purple)' : 'var(--border-color)'}
+                  strokeWidth="2"
+                  cursor="pointer"
+                  onClick={() => setTempStandName('West Stand')}
+                  style={{ transition: 'all 0.2s' }}
+                />
+              </svg>
+              
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <span style={{ position: 'absolute', top: '10px' }}>North 🔵</span>
+                <span style={{ position: 'absolute', right: '10px' }}>East 🟢</span>
+                <span style={{ position: 'absolute', bottom: '10px' }}>South 🟡</span>
+                <span style={{ position: 'absolute', left: '10px' }}>West 🟣</span>
+              </div>
+            </div>
+
+            {/* Stand Label */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'inline-block', marginBottom: '1.25rem' }}>
+              {language === 'es' ? 'Sector Seleccionado:' : 'Active Sector:'} <strong style={{ color: 'var(--accent-cyan)' }}>{tempStandName}</strong>
+            </div>
+
+            {/* Seats Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+              {['A', 'B', 'C', 'D', 'E'].map(row => (
+                <div key={row} style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                  <span style={{ width: '20px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{row}</span>
+                  {[1, 2, 3, 4, 5, 6].map(num => {
+                    const seatId = `${row}-${num}`;
+                    const isSelected = tempSeatNumber === seatId;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setTempSeatNumber(seatId)}
+                        aria-label={`Seat ${seatId}`}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '6px',
+                          border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)',
+                          background: isSelected ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255,255,255,0.02)',
+                          color: isSelected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          fontSize: '0.7rem',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.1s'
+                        }}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {/* Selected Status Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1.25rem', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {language === 'es' ? 'Tu Selección:' : 'Selected Coordinates:'}
+              </span>
+              <strong style={{ color: 'white' }}>
+                {tempStandName} ({tempSeatNumber})
+              </strong>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowSeatMapModal(false)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '0.6rem 1rem' }}
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setStandName(tempStandName);
+                  setSeatNumber(tempSeatNumber);
+                  setShowSeatMapModal(false);
+                }} 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '0.6rem 1rem', background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)' }}
+              >
+                {language === 'es' ? 'Confirmar Asiento' : 'Confirm Seat'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
