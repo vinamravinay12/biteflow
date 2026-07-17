@@ -27,3 +27,6 @@ dist-ssr
 # Claude Code local/session-only files (launch.json is shared, these aren't)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Firebase
+.firebase/

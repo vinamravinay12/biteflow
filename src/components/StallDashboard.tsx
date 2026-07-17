@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { StallSession, MenuItem, OrderStatus, OrderLineItem, DashboardStats } from '../types';
+import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
 import {
   Store, Plus, Trash2, Edit, Check, X, Clock,
   TrendingUp, DollarSign, ShoppingBag, LogOut,
@@ -29,6 +30,7 @@ interface KioskOrderView {
 
 export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'analytics'>('orders');
+  const [language, setLanguage] = useState<KioskLanguageCode>('en');
   const [orders, setOrders] = useState<KioskOrderView[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -399,15 +401,31 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Kiosk Language Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '0.4rem 0.6rem' }}>
+            <span style={{ fontSize: '0.9rem' }}>🌐</span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
+              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
+            >
+              {Object.entries(KIOSK_LOCALES).map(([code, loc]) => (
+                <option key={code} value={code} style={{ color: 'black' }}>
+                  {loc.flag} {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button onClick={() => setIsPassModalOpen(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Lock size={15} /> Change Password
+            <Lock size={15} /> {KIOSK_TRANSLATIONS[language].changePassButton}
           </button>
           <button onClick={loadData} className="btn btn-secondary" title="Refresh data">
             <RefreshCw size={18} />
           </button>
           <button onClick={onLogout} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <LogOut size={16} /> Sign Out
+            <LogOut size={16} /> {KIOSK_TRANSLATIONS[language].logout}
           </button>
         </div>
       </div>
@@ -439,7 +457,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             transition: 'all 0.15s ease'
           }}
         >
-          <ShoppingBag size={18} /> Orders Queue
+          <ShoppingBag size={18} /> {KIOSK_TRANSLATIONS[language].ordersTab}
           {orders.filter(o => o.status === 'pending' || o.status === 'preparing').length > 0 && (
             <span style={{
               background: 'var(--accent-cyan)',
@@ -472,7 +490,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             transition: 'all 0.15s ease'
           }}
         >
-          <Store size={18} /> Manage Menu
+          <Store size={18} /> {KIOSK_TRANSLATIONS[language].menuTab}
         </button>
 
         <button 
@@ -492,7 +510,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             transition: 'all 0.15s ease'
           }}
         >
-          <TrendingUp size={18} /> Analytics & Sales
+          <TrendingUp size={18} /> {KIOSK_TRANSLATIONS[language].analyticsTab}
         </button>
       </div>
 
@@ -535,9 +553,9 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
           {filteredOrders.length === 0 ? (
             <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center', borderStyle: 'dashed' }}>
               <ShoppingBag size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>No orders found</h3>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{KIOSK_TRANSLATIONS[language].noOrders}</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                {orderFilter === 'all' ? 'Your stall hasn\'t received any orders yet.' : `No orders with status "${orderFilter}".`}
+                {orderFilter === 'all' ? (language === 'es' ? 'Tu puesto aún no ha recibido ningún pedido.' : "Your stall hasn't received any orders yet.") : (language === 'es' ? `No hay pedidos con el estado "${orderFilter}".` : `No orders with status "${orderFilter}".`)}
               </p>
             </div>
           ) : (
@@ -566,15 +584,15 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                           order.status === 'completed' ? 'badge-success' :
                           'badge-danger'
                         }`}>
-                          {order.status === 'ready' ? 'ready for pickup' : order.status}
+                          {order.status === 'ready' ? KIOSK_TRANSLATIONS[language].statusReady : order.status === 'pending' ? KIOSK_TRANSLATIONS[language].statusPending : order.status === 'preparing' ? KIOSK_TRANSLATIONS[language].statusPreparing : order.status === 'completed' ? KIOSK_TRANSLATIONS[language].statusCompleted : KIOSK_TRANSLATIONS[language].statusCancelled}
                         </span>
                       </div>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                        Placed on {new Date(order.orderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(order.orderTime).toLocaleDateString()})
+                        {language === 'es' ? 'Realizado el' : 'Placed on'} {new Date(order.orderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(order.orderTime).toLocaleDateString()})
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Customer</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].customerLabel}</span>
                       <p style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{order.customerName}</p>
                     </div>
                   </div>
@@ -606,7 +624,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                         alignItems: 'center'
                       }}>
                         <AlertCircle size={14} />
-                        <span><strong>Notes:</strong> {order.notes}</span>
+                        <span><strong>{KIOSK_TRANSLATIONS[language].orderNotes}:</strong> {order.notes}</span>
                       </div>
                     )}
                     {order.seatNumber && (
@@ -624,11 +642,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span>🏟️</span>
-                          <span><strong>Stadium Delivery:</strong></span>
+                          <span><strong>{language === 'es' ? 'Entrega en el Estadio:' : 'Stadium Delivery:'}</strong></span>
                         </div>
                         <div style={{ marginLeft: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                          <div>Match: <strong style={{ color: 'white' }}>{order.matchName}</strong></div>
-                          <div>Location: <strong style={{ color: 'white' }}>{order.stand} (Seat {order.seatNumber})</strong></div>
+                          <div>{language === 'es' ? 'Partido:' : 'Match:'} <strong style={{ color: 'white' }}>{order.matchName}</strong></div>
+                          <div>{language === 'es' ? 'Ubicación:' : 'Location:'} <strong style={{ color: 'white' }}>{order.stand} ({KIOSK_TRANSLATIONS[language].seatLabel} {order.seatNumber})</strong></div>
                         </div>
                       </div>
                     )}
@@ -664,7 +682,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             maxWidth: '400px'
                           }}>
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-red)', display: 'block', textAlign: 'left' }}>
-                              Select Reason for Declining Order:
+                              {KIOSK_TRANSLATIONS[language].selectReason}:
                             </span>
                             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                               {['Finished / Out of Stock', 'Not Available', 'Kiosk Too Busy', 'Technical Issues'].map(reason => (
@@ -683,14 +701,14 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                                     cursor: 'pointer'
                                   }}
                                 >
-                                  {reason}
+                                  {reason === 'Finished / Out of Stock' ? (language === 'es' ? 'Agotado / Sin stock' : 'Finished / Out of Stock') : reason === 'Not Available' ? (language === 'es' ? 'No disponible' : 'Not Available') : reason === 'Kiosk Too Busy' ? (language === 'es' ? 'Puesto muy ocupado' : 'Kiosk Too Busy') : (language === 'es' ? 'Problemas técnicos' : 'Technical Issues')}
                                 </button>
                               ))}
                             </div>
                             <input
                               type="text"
                               className="input-field"
-                              placeholder="Or type custom reason..."
+                              placeholder={KIOSK_TRANSLATIONS[language].declineReasonPlaceholder}
                               value={declineReason}
                               onChange={(e) => setDeclineReason(e.target.value)}
                               style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', background: 'rgba(3,7,18,0.5)' }}
@@ -705,7 +723,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                                 className="btn btn-secondary"
                                 style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px' }}
                               >
-                                Cancel
+                                {KIOSK_TRANSLATIONS[language].cancelButton}
                               </button>
                               <button
                                 type="button"
@@ -718,7 +736,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                                 className="btn btn-primary"
                                 style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px', background: 'var(--accent-red)' }}
                               >
-                                Confirm Decline
+                                {KIOSK_TRANSLATIONS[language].cancelConfirmButton}
                               </button>
                             </div>
                           </div>
@@ -732,7 +750,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                               className="btn btn-secondary" 
                               style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                             >
-                              <X size={14} /> Decline & Refund
+                              <X size={14} /> {KIOSK_TRANSLATIONS[language].declineButton}
                             </button>
                             <button 
                               onClick={() => handleUpdateStatus(order.orderId, 'preparing')}
@@ -746,7 +764,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                                 background: 'linear-gradient(135deg, var(--accent-orange), #ea580c)'
                               }}
                             >
-                              <Check size={14} /> Accept Order
+                              <Check size={14} /> {KIOSK_TRANSLATIONS[language].acceptButton}
                             </button>
                           </>
                         )
@@ -765,7 +783,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)'
                           }}
                         >
-                          <Clock size={14} /> Mark as Ready
+                          <Clock size={14} /> {KIOSK_TRANSLATIONS[language].readyButton}
                         </button>
                       )}
 
@@ -782,13 +800,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             background: 'linear-gradient(135deg, var(--accent-green), #047857)'
                           }}
                         >
-                          <Check size={14} /> Mark as Completed
+                          <Check size={14} /> {KIOSK_TRANSLATIONS[language].completeButton}
                         </button>
                       )}
 
                       {(order.status === 'completed' || order.status === 'cancelled') && (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                          Order finalized
+                          {language === 'es' ? 'Pedido finalizado' : 'Order finalized'}
                         </span>
                       )}
                     </div>

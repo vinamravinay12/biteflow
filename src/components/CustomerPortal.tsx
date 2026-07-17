@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, KioskOrderEntry, UserWallet, Match } from '../types';
+import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils/translations';
 import {
   Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock,
   History, Sparkles, ChevronRight, Info, CheckCircle, X,
@@ -43,53 +44,62 @@ interface ChatMessage {
 
 const TRANSLATIONS = {
   en: {
-    greeting: "Hello! I am your BiteFlow AI Concierge. I can help you search, browse, and order food from stadium kiosks. Ask me what you'd like (e.g., 'I want a taco' or 'show burgers')!",
-    noItems: "I couldn't find any items matching your request in the kiosks active for this match. Could you try something else?",
-    foundItems: "Here are the items I found for you. You can add them directly to your cart:",
-    askQuantity: (name: string) => `How many of "${name}" would you like to order?`,
-    confirmed: (qty: number, name: string) => `Added ${qty}x "${name}" to your cart!`,
-    help: "You can ask me to search for tacos, burgers, wok, noodles, desserts, or specific stalls. I reply in Spanish, Portuguese, French, Italian, and English!",
-    invalidQty: "Please specify a valid quantity."
+    greeting: USER_TRANSLATIONS.en.aiGreeting,
+    noItems: USER_TRANSLATIONS.en.aiNoItems,
+    foundItems: USER_TRANSLATIONS.en.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.en.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.en.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.en.aiHelp,
+    invalidQty: USER_TRANSLATIONS.en.aiInvalidQty
   },
   es: {
-    greeting: "¡Hola! Soy tu asistente BiteFlow AI. Puedo ayudarte a buscar y pedir comida de los puestos del estadio. ¡Dime qué te gustaría (ej. 'quiero un taco' o 'mostrar hamburguesas')!",
-    noItems: "No encontré ningún artículo que coincida con tu solicitud en los puestos activos para este partido. ¿Podrías intentar algo más?",
-    foundItems: "Aquí están los artículos que encontré para ti. Puedes agregarlos directamente a tu carrito:",
-    askQuantity: (name: string) => `¿Cuántos de "${name}" te gustaría pedir?`,
-    confirmed: (qty: number, name: string) => `¡Agregado ${qty}x "${name}" a tu carrito!`,
-    help: "Puedes pedirme que busque tacos, hamburguesas, wok, fideos, postres o puestos específicos. ¡Respondo en español, portugués, francés, italiano e inglés!",
-    invalidQty: "Por favor, especifica una cantidad válida."
+    greeting: USER_TRANSLATIONS.es.aiGreeting,
+    noItems: USER_TRANSLATIONS.es.aiNoItems,
+    foundItems: USER_TRANSLATIONS.es.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.es.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.es.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.es.aiHelp,
+    invalidQty: USER_TRANSLATIONS.es.aiInvalidQty
   },
   pt: {
-    greeting: "Olá! Sou o seu assistente BiteFlow AI. Posso ajudar você a procurar e pedir comida das barracas do estádio. Diga-me o que deseja (ex. 'quero um taco' ou 'mostrar hambúrgueres')!",
-    noItems: "Não encontrei nenhum item correspondente ao seu pedido nas barracas ativas para este jogo. Poderia tentar outra coisa?",
-    foundItems: "Aqui estão os itens que encontrei para você. Você pode adicioná-los diretamente ao carrinho:",
-    askQuantity: (name: string) => `Quantos de "${name}" você gostaria de pedir?`,
-    confirmed: (qty: number, name: string) => `Adicionado ${qty}x "${name}" ao seu carrinho!`,
-    help: "Você pode me pedir para procurar tacos, hambúrgueres, wok, macarrão, sobremesas ou barracas específicas. Respondo em espanhol, português, francês, italiano e inglês!",
-    invalidQty: "Por favor, especifique uma quantidade válida."
+    greeting: USER_TRANSLATIONS.pt.aiGreeting,
+    noItems: USER_TRANSLATIONS.pt.aiNoItems,
+    foundItems: USER_TRANSLATIONS.pt.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.pt.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.pt.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.pt.aiHelp,
+    invalidQty: USER_TRANSLATIONS.pt.aiInvalidQty
   },
   fr: {
-    greeting: "Bonjour ! Je suis votre assistant BiteFlow AI. Je peux vous aider à rechercher et à commander de la nourriture dans les kiosques du stade. Dites-moi ce que vous voulez (ex. 'je veux un taco' ou 'afficher des burgers')!",
-    noItems: "Je n'y ai trouvé aucun article correspondant à votre demande dans les kiosques actifs pour ce match. Pourriez-vous essayer autre chose ?",
-    foundItems: "Voici les articles que j'ai trouvés pour vous. Vous pouvez les ajouter directement à votre panier :",
-    askQuantity: (name: string) => `Combien de "${name}" souhaitez-vous commander ?`,
-    confirmed: (qty: number, name: string) => `Ajouté ${qty}x "${name}" à votre panier !`,
-    help: "Vous pouvez me demander de rechercher des tacos, des burgers, des woks, des nouilles, des desserts ou des kiosques spécifiques. Je réponds en espagnol, portugais, français, italien et anglais !",
-    invalidQty: "Veuillez spécifier une quantité valide."
+    greeting: USER_TRANSLATIONS.fr.aiGreeting,
+    noItems: USER_TRANSLATIONS.fr.aiNoItems,
+    foundItems: USER_TRANSLATIONS.fr.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.fr.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.fr.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.fr.aiHelp,
+    invalidQty: USER_TRANSLATIONS.fr.aiInvalidQty
   },
   it: {
-    greeting: "Ciao! Sono il tuo assistente BiteFlow AI. Posso aiutarti a cercare e ordinare cibo dai chioschi dello stadio. Dimmi cosa desideri (es. 'voglio un taco' o 'mostra hamburger')!",
-    noItems: "Non ho trovato articoli corrispondenti alla tua richiesta nei chioschi attivi per questa partita. Potresti provare qualcos'altro?",
-    foundItems: "Ecco gli articoli che ho trovato per te. Puoi aggiungerli direttamente al carrello:",
-    askQuantity: (name: string) => `Quanti di "${name}" vorresti ordinare?`,
-    confirmed: (qty: number, name: string) => `Aggiunto ${qty}x "${name}" al tuo carrello!`,
-    help: "Puoi chiedermi di cercare taco, hamburger, wok, spaghetti, dolci o chioschi specifici. Rispondo in spagnolo, portoghese, francese, italiano e inglese!",
-    invalidQty: "Si prega di specificare una quantità valida."
+    greeting: USER_TRANSLATIONS.it.aiGreeting,
+    noItems: USER_TRANSLATIONS.it.aiNoItems,
+    foundItems: USER_TRANSLATIONS.it.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.it.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.it.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.it.aiHelp,
+    invalidQty: USER_TRANSLATIONS.it.aiInvalidQty
+  },
+  de: {
+    greeting: USER_TRANSLATIONS.de.aiGreeting,
+    noItems: USER_TRANSLATIONS.de.aiNoItems,
+    foundItems: USER_TRANSLATIONS.de.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.de.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.de.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.de.aiHelp,
+    invalidQty: USER_TRANSLATIONS.de.aiInvalidQty
   }
 };
 
-const detectLanguage = (text: string): 'en' | 'es' | 'pt' | 'fr' | 'it' => {
+const detectLanguage = (text: string): LanguageCode => {
   const t = text.toLowerCase();
   if (t.includes('quiero') || t.includes('pedir') || t.includes('hamburguesa') || t.includes('hola') || t.includes('comida') || t.includes('tacos') || t.includes('por favor') || t.includes('gracias') || t.includes('que tal')) {
     return 'es';
@@ -102,6 +112,9 @@ const detectLanguage = (text: string): 'en' | 'es' | 'pt' | 'fr' | 'it' => {
   }
   if (t.includes('ciao') || t.includes('vorrei') || t.includes('ordinare') || t.includes('per favore') || t.includes('dolce') || t.includes('grazie')) {
     return 'it';
+  }
+  if (t.includes('hallo') || t.includes('bitte') || t.includes('möchte') || t.includes('bestellen') || t.includes('danke') || t.includes('karte')) {
+    return 'de';
   }
   return 'en';
 };
@@ -129,34 +142,40 @@ const getMatchingItems = (text: string, items: MenuItem[]): MenuItem[] => {
 
 const CHAT_FLOW_TRANSLATIONS = {
   en: {
-    moreQuestion: "Is this enough or would you like to order more?",
-    askPayment: "Here is your order summary. Should I proceed with the payment?",
+    moreQuestion: USER_TRANSLATIONS.en.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.en.aiAskPayment,
     doneKeywords: ['done', "that's it", 'no more', 'enough', 'checkout', 'pay', 'ready', 'no thank', 'nothing else', 'no', 'finished', 'stop'],
-    invalidSeating: "Please specify your Stand / Section and Seat Number in the form below before payment."
+    invalidSeating: USER_TRANSLATIONS.en.aiInvalidSeating
   },
   es: {
-    moreQuestion: "¿Es esto suficiente o te gustaría pedir algo más?",
-    askPayment: "Aquí está el resumen de tu pedido. ¿Procedo con el pago?",
+    moreQuestion: USER_TRANSLATIONS.es.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.es.aiAskPayment,
     doneKeywords: ['listo', 'ya está', 'suficiente', 'nada más', 'pagar', 'terminar', 'no gracias', 'no', 'nada mas', 'terminado', 'hecho'],
-    invalidSeating: "Por favor, especifica tu Tribuna/Sección y Número de asiento en el formulario a continuación antes de pagar."
+    invalidSeating: USER_TRANSLATIONS.es.aiInvalidSeating
   },
   pt: {
-    moreQuestion: "Isto é suficiente ou gostaria de pedir mais?",
-    askPayment: "Aqui está o resumo do seu pedido. Devo proceder com o pagamento?",
+    moreQuestion: USER_TRANSLATIONS.pt.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.pt.aiAskPayment,
     doneKeywords: ['pronto', 'chega', 'suficiente', 'nada mais', 'pagar', 'fechar', 'não obrigado', 'nao', 'não', 'nada mais', 'terminado'],
-    invalidSeating: "Por favor, especifique o seu Setor/Tribuna e Número do assento no formulário abaixo antes do pagamento."
+    invalidSeating: USER_TRANSLATIONS.pt.aiInvalidSeating
   },
   fr: {
-    moreQuestion: "Est-ce suffisant ou souhaitez-vous commander autre chose?",
-    askPayment: "Voici le récapulitatif de votre commande. Dois-je procéder au paiement?",
+    moreQuestion: USER_TRANSLATIONS.fr.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.fr.aiAskPayment,
     doneKeywords: ['fini', "c'est tout", 'assez', 'payer', 'terminer', 'non merci', 'non', 'rien d\'autre', 'payer'],
-    invalidSeating: "Veuillez spécifier votre Tribune/Section et Numéro de siège dans le formulaire ci-dessous avant le paiement."
+    invalidSeating: USER_TRANSLATIONS.fr.aiInvalidSeating
   },
   it: {
-    moreQuestion: "È sufficiente o vorresti ordinare altro?",
-    askPayment: "Ecco il riepilogo del tuo ordine. Procedo con il pagamento?",
+    moreQuestion: USER_TRANSLATIONS.it.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.it.aiAskPayment,
     doneKeywords: ['finito', 'a posto', 'abbastanza', 'pagare', 'nient\'altro', 'no grazie', 'no', 'niente altro', 'pronto'],
-    invalidSeating: "Si prega di specificare il Settore/Tribuna e il Numero di posto nel modulo sottostante prima del pagamento."
+    invalidSeating: USER_TRANSLATIONS.it.aiInvalidSeating
+  },
+  de: {
+    moreQuestion: USER_TRANSLATIONS.de.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.de.aiAskPayment,
+    doneKeywords: ['fertig', 'das wars', 'genug', 'bezahlen', 'bestellen', 'nein danke', 'nein', 'fertig', 'stop'],
+    invalidSeating: USER_TRANSLATIONS.de.aiInvalidSeating
   }
 };
 
@@ -167,6 +186,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [activeOrders, setActiveOrders] = useState<KioskOrderView[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'browse' | 'orders'>('browse');
+  const [language, setLanguage] = useState<LanguageCode>('en');
 
   // Delivery & Match states
   const [matches, setMatches] = useState<Match[]>([]);
@@ -179,7 +199,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [aiTyping, setAiTyping] = useState(false);
-  const [pendingConfirmation, setPendingConfirmation] = useState<{ item: MenuItem; quantity: number; lang: 'en' | 'es' | 'pt' | 'fr' | 'it' } | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ item: MenuItem; quantity: number; lang: LanguageCode } | null>(null);
   const [showVisualMenu, setShowVisualMenu] = useState(false);
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -405,13 +425,13 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       const helloMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         sender: 'ai',
-        text: TRANSLATIONS.en.greeting,
+        text: TRANSLATIONS[language].greeting,
         timestamp: new Date().toISOString()
       };
       setChatMessages([helloMsg]);
       setPendingConfirmation(null);
     }
-  }, [hasSubmittedMatchDetails, user]);
+  }, [hasSubmittedMatchDetails, user, language]);
 
   const addToCart = (item: MenuItem, qty: number = 1) => {
     if (!item.isAvailable) return;
@@ -450,7 +470,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       // Use Gemini to confirm in the user's language
       try {
         const confirmPrompt = `The user just added 1x "${item.name}" ($${item.price}) to their cart. Confirm this addition and ask if they want to order more or are done. Keep it short (1-2 sentences). Reply in the SAME language the conversation has been in so far.`;
-        const rawResponse = await callGeminiAPI(confirmPrompt, chatMessages, geminiApiKey);
+        const rawResponse = await callGeminiAPI(confirmPrompt, chatMessages, geminiApiKey, language);
         let parsedText = rawResponse.replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '').replace('[SHOW_CHECKOUT]', '').trim();
 
         const aiMsg: ChatMessage = {
@@ -487,7 +507,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     }, 600);
   };
 
-  const callGeminiAPI = async (text: string, history: ChatMessage[], apiKey: string): Promise<string> => {
+  const callGeminiAPI = async (text: string, history: ChatMessage[], apiKey: string, currentLang: string): Promise<string> => {
     const activeMenuInfo = filteredMenuItems.map(i => ({
       id: i.id,
       name: i.name,
@@ -503,10 +523,10 @@ The active kiosks and their menu items are:
 ${JSON.stringify(activeMenuInfo)}
 
 Rules:
-1. Detect the user's language (English, Spanish, Portuguese, Italian, French, etc.) and reply in the EXACT same language.
+1. Reply in the user's selected language: "${currentLang}". All responses, questions, and confirmations MUST be written in this language unless the user speaks to you in a different one.
 2. Recommend matching items. Suggest 1 to 4 items.
-3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?"
-4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" and you MUST append [SHOW_CHECKOUT] at the very end of your response.
+3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?" (translated into the current language).
+4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" (translated into the current language) and you MUST append [SHOW_CHECKOUT] at the very end of your response.
 5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.
 6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added.`;
 
@@ -570,19 +590,20 @@ Rules:
     // Check if we can use the live Gemini API
     if (geminiApiKey.trim()) {
       try {
-        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey);
+        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey, language);
         
         let parsedText = rawResponse;
         let attachedItems: MenuItem[] = [];
         let shouldShowCheckout = false;
         
-        if (rawResponse.includes('[SHOW_CHECKOUT]')) {
+        // Clean up any [SHOW_CHECKOUT] tag
+        if (parsedText.includes('[SHOW_CHECKOUT]')) {
           shouldShowCheckout = true;
-          parsedText = parsedText.replace('[SHOW_CHECKOUT]', '').trim();
+          parsedText = parsedText.replace(/\[SHOW_CHECKOUT\]/gi, '').trim();
         }
 
-        // Parse [ADD_TO_CART: [{"id": "item_id", "quantity": N}]] tags
-        const cartTagMatch = rawResponse.match(/\[ADD_TO_CART:\s*(\[[^\]]*\])\]/);
+        // Extract and process [ADD_TO_CART: ...] tag
+        const cartTagMatch = parsedText.match(/\[ADD_TO_CART:\s*(\[[^\]]*\])\]/i);
         if (cartTagMatch) {
           try {
             const additions: { id: string; quantity: number }[] = JSON.parse(cartTagMatch[1]);
@@ -592,23 +613,25 @@ Rules:
                 addToCart(item, add.quantity);
               }
             });
-            parsedText = parsedText.replace(/\[ADD_TO_CART:\s*\[[^\]]*\]\]/, '').trim();
           } catch (e) {
             console.error('Error parsing ADD_TO_CART tag:', e);
           }
         }
+        // Always strip the [ADD_TO_CART: ...] tag from user-facing text
+        parsedText = parsedText.replace(/\[ADD_TO_CART:\s*.*?\]\]/gi, '').trim();
 
-        // Parse [ITEMS: ["id1", "id2"]] tags
-        const itemsTagMatch = rawResponse.match(/\[ITEMS:\s*(\[[^\]]*\])\]/);
+        // Extract and process [ITEMS: ...] tag
+        const itemsTagMatch = parsedText.match(/\[ITEMS:\s*(\[[^\]]*\])\]/i);
         if (itemsTagMatch) {
           try {
             const ids: string[] = JSON.parse(itemsTagMatch[1]);
             attachedItems = filteredMenuItems.filter(i => ids.includes(i.id));
-            parsedText = parsedText.replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '').trim();
           } catch (e) {
             console.error('Error parsing attached items:', e);
           }
         }
+        // Always strip the [ITEMS: ...] tag from user-facing text
+        parsedText = parsedText.replace(/\[ITEMS:\s*.*?\]\]/gi, '').trim();
 
         const aiMsg: ChatMessage = {
           id: `msg-${Date.now() + 1}`,
@@ -839,16 +862,31 @@ Rules:
   if (!user) {
     return (
       <div style={{ maxWidth: '460px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
-        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px' }}>
+        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
           
+          {/* Language Selector in top right */}
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
+              <span style={{ fontSize: '0.8rem' }}>🌐</span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
+                  <option key={code} value={code} style={{ color: 'black' }}>
+                    {loc.flag} {loc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <span style={{ fontSize: '3rem' }}>🍔</span>
             <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
-              BiteFlow Customer Hub
+              Biteflow
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              {auth ? 'Firebase Authentication Mode' : 'Sandbox LocalStorage Mode'}
-            </p>
           </div>
 
           {/* Tabs for Login / Register */}
@@ -868,7 +906,7 @@ Rules:
                 transition: 'all 0.2s'
               }}
             >
-              Sign In
+              {USER_TRANSLATIONS[language].signInTab}
             </button>
             <button 
               onClick={() => { setAuthMode('register'); setAuthError(''); }}
@@ -885,7 +923,7 @@ Rules:
                 transition: 'all 0.2s'
               }}
             >
-              Sign Up
+              {USER_TRANSLATIONS[language].signUpTab}
             </button>
           </div>
 
@@ -910,7 +948,7 @@ Rules:
           <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {authMode === 'register' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name</label>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].displayNameLabel}</label>
                 <div style={{ position: 'relative' }}>
                   <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                   <input
@@ -926,7 +964,7 @@ Rules:
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].emailLabel}</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <input
@@ -941,7 +979,7 @@ Rules:
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].passwordLabel}</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <input
@@ -977,7 +1015,7 @@ Rules:
               {authLoading ? (
                 <span>Loading...</span>
               ) : (
-                <span>{authMode === 'login' ? 'Sign In' : 'Create Account'}</span>
+                <span>{authMode === 'login' ? USER_TRANSLATIONS[language].signInTab : USER_TRANSLATIONS[language].signUpTab}</span>
               )}
             </button>
           </form>
@@ -985,7 +1023,7 @@ Rules:
           {!auth && (
             <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', textAlign: 'center' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                💡 Tip: Try signing in with any email (e.g. <code>test@test.com</code> / <code>password</code>) or create a new account to test Sandbox mode!
+                {USER_TRANSLATIONS[language].tipText}
               </p>
             </div>
           )}
@@ -998,15 +1036,33 @@ Rules:
   if (user && !hasSubmittedMatchDetails) {
     return (
       <div style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
-        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px' }}>
+        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
           
+          {/* Language Selector in top right */}
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
+              <span style={{ fontSize: '0.8rem' }}>🌐</span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
+                  <option key={code} value={code} style={{ color: 'black' }}>
+                    {loc.flag} {loc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <span style={{ fontSize: '3rem' }}>Stadium Roster 🏟️</span>
+            <span style={{ fontSize: '3rem' }}>{USER_TRANSLATIONS[language].rosterTitle} 🏟️</span>
             <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
-              Select Your Scheduled Game
+              {USER_TRANSLATIONS[language].selectGameTitle}
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Select the FIFA match you are attending to view the stadium's active kiosk offerings!
+              {USER_TRANSLATIONS[language].selectGameDesc}
             </p>
           </div>
 
@@ -1023,7 +1079,7 @@ Rules:
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Select Scheduled Match
+                {USER_TRANSLATIONS[language].selectMatchLabel}
               </label>
               <div style={{ position: 'relative' }}>
                 <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
@@ -1033,7 +1089,7 @@ Rules:
                   onChange={(e) => setSelectedMatchId(e.target.value)}
                   style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
                 >
-                  <option value="" style={{ color: 'black' }}>-- Select Match --</option>
+                  <option value="" style={{ color: 'black' }}>{USER_TRANSLATIONS[language].selectMatchPlaceholder}</option>
                   {matches.map(m => (
                     <option key={m.id} value={m.id} style={{ color: 'black' }}>
                       {m.name} ({m.city})
@@ -1048,7 +1104,7 @@ Rules:
               className="btn btn-primary" 
               style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)' }}
             >
-              Enter Stadium & View Food Court
+              {USER_TRANSLATIONS[language].enterStadiumButton}
             </button>
           </form>
 
@@ -1058,7 +1114,7 @@ Rules:
               onClick={handleLogout} 
               style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}
             >
-              Sign Out / Switch Account
+              {USER_TRANSLATIONS[language].switchAccountLink}
             </button>
           </div>
         </div>
@@ -1087,10 +1143,10 @@ Rules:
         <div>
           <span style={{ fontSize: '2.5rem' }}>🍔🌮🍟</span>
           <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {selectedMatchId ? 'Stadium Food Court' : 'Campus Food Court'} <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>{selectedMatchId ? 'Live Game Delivery' : 'Simulator'}</span>
+            Biteflow <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>{selectedMatchId ? USER_TRANSLATIONS[language].liveDeliveryLabel : USER_TRANSLATIONS[language].simulatorLabel}</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            Welcome back, <strong>{user?.displayName || db.getCustomerName()}</strong>! Order from multiple food stalls in a single transaction.
+            {USER_TRANSLATIONS[language].welcomeBack}, <strong>{user?.displayName || db.getCustomerName()}</strong>! {USER_TRANSLATIONS[language].orderDesc}
             <button 
               onClick={handleLogout}
               style={{
@@ -1109,7 +1165,7 @@ Rules:
                 transition: 'all 0.2s'
               }}
             >
-              <LogOut size={12} /> Sign Out
+              <LogOut size={12} /> {USER_TRANSLATIONS[language].logoutButton}
             </button>
           </p>
           
@@ -1133,15 +1189,15 @@ Rules:
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
                 <span style={{ fontSize: '1.2rem' }}>🏟️</span>
                 <span>
-                  Watching: <strong>{matches.find(m => m.id === selectedMatchId)?.name}</strong> 
-                  <span style={{ color: 'var(--text-muted)' }}> | Venue: <strong>{matches.find(m => m.id === selectedMatchId)?.city}</strong></span>
+                  {USER_TRANSLATIONS[language].watching}: <strong>{matches.find(m => m.id === selectedMatchId)?.name}</strong> 
+                  <span style={{ color: 'var(--text-muted)' }}> | {USER_TRANSLATIONS[language].venue}: <strong>{matches.find(m => m.id === selectedMatchId)?.city}</strong></span>
                   {standName && seatNumber ? (
                     <>
                       <span style={{ color: 'var(--text-muted)' }}> | Stand: <strong>{standName}</strong></span>
                       <span style={{ color: 'var(--text-muted)' }}> | Seat: <strong>{seatNumber}</strong></span>
                     </>
                   ) : (
-                    <span style={{ color: 'var(--accent-orange)' }}> | ⚠️ Seating not set (enter in cart before checkout)</span>
+                    <span style={{ color: 'var(--accent-orange)' }}> | ⚠️ {USER_TRANSLATIONS[language].seatingNotSet}</span>
                   )}
                 </span>
               </div>
@@ -1160,28 +1216,45 @@ Rules:
                   transition: 'all 0.2s'
                 }}
               >
-                Change Game
+                {USER_TRANSLATIONS[language].changeGame}
               </button>
             </div>
           )}
         </div>
 
-        {/* Quick Wallet Summary widget */}
-        <button 
-          onClick={() => setShowCart(true)} 
-          className="glass-panel" 
-          style={{ 
-            padding: '1rem 1.5rem', 
-            borderRadius: '16px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '1.25rem',
-            textAlign: 'left',
-            cursor: 'pointer',
-            border: '1px solid rgba(6, 182, 212, 0.3)',
-            background: 'rgba(3, 7, 18, 0.6)'
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {/* Language Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.5rem 0.75rem' }}>
+            <span style={{ fontSize: '0.9rem' }}>🌐</span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
+            >
+              {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
+                <option key={code} value={code} style={{ color: 'black' }}>
+                  {loc.flag} {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quick Wallet Summary widget */}
+          <button 
+            onClick={() => setShowCart(true)} 
+            className="glass-panel" 
+            style={{ 
+              padding: '1rem 1.5rem', 
+              borderRadius: '16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1.25rem',
+              textAlign: 'left',
+              cursor: 'pointer',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
+              background: 'rgba(3, 7, 18, 0.6)'
+            }}
+          >
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(6, 182, 212, 0.15)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: 'var(--accent-cyan)' }}>
             <Wallet size={20} />
           </div>
@@ -1194,6 +1267,7 @@ Rules:
           <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
         </button>
       </div>
+    </div>
 
       {/* Tab Navigation */}
       <div 
@@ -1220,7 +1294,7 @@ Rules:
             transition: 'all 0.2s'
           }}
         >
-          🍔 Browse & Order
+          🍔 {USER_TRANSLATIONS[language].browseTab}
         </button>
         <button 
           onClick={() => setActiveTab('orders')}
@@ -1236,7 +1310,7 @@ Rules:
             transition: 'all 0.2s'
           }}
         >
-          📋 Track Orders
+          📋 {USER_TRANSLATIONS[language].ordersTab}
           {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
             <span 
               style={{ 
@@ -1266,7 +1340,7 @@ Rules:
           {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
             <div className="glass-panel-glow" style={{ padding: '1.5rem', border: '1px solid var(--border-color-glow)' }}>
               <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Clock size={16} color="var(--accent-cyan)" /> Live Order Progress
+                <Clock size={16} color="var(--accent-cyan)" /> {USER_TRANSLATIONS[language].trackLiveButton}
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1293,7 +1367,7 @@ Rules:
                           order.status === 'preparing' ? 'badge-info' :
                           'badge-success'
                         }`}>
-                          {order.status === 'ready' ? 'ready for pickup 🎉' : order.status}
+                          {order.status === 'ready' ? USER_TRANSLATIONS[language].progressStepReady : order.status === 'pending' ? USER_TRANSLATIONS[language].progressStepReceived : USER_TRANSLATIONS[language].progressStepPreparing}
                         </span>
                       </div>
 
@@ -1316,9 +1390,9 @@ Rules:
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span style={{ color: order.status === 'pending' ? 'var(--accent-orange)' : '' }}>Received</span>
-                        <span style={{ color: order.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>Kitchen</span>
-                        <span style={{ color: order.status === 'ready' ? 'var(--accent-green)' : '' }}>Ready for Pickup</span>
+                        <span style={{ color: order.status === 'pending' ? 'var(--accent-orange)' : '' }}>{USER_TRANSLATIONS[language].progressStepReceived}</span>
+                        <span style={{ color: order.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>{USER_TRANSLATIONS[language].progressStepPreparing}</span>
+                        <span style={{ color: order.status === 'ready' ? 'var(--accent-green)' : '' }}>{USER_TRANSLATIONS[language].progressStepReady}</span>
                       </div>
                     </div>
                   ))}
@@ -1337,7 +1411,7 @@ Rules:
                   </span>
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
-                  Ask in Spanish, Portuguese, French, Italian, or English!
+                  {USER_TRANSLATIONS[language].askLanguagePromptDesc}
                 </p>
               </div>
               
@@ -1658,7 +1732,7 @@ Rules:
                       <input
                         type="text"
                         className="input-field"
-                        placeholder="Search dishes, stalls, or categories..."
+                        placeholder={USER_TRANSLATIONS[language].searchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{ paddingLeft: '2.5rem' }}

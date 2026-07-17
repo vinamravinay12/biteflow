@@ -3,6 +3,7 @@ import { db } from '../utils/database';
 import type { Stall, Match } from '../types';
 import { FIFA_CITIES } from '../data/mockData';
 import { encryptText } from '../utils/crypto';
+import { ADMIN_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
 import { 
   Store, Plus, Lock, Key, Eye, EyeOff, Trash2, 
   Check, RefreshCw, BarChart, UserCheck, AlertCircle, LogOut,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 export const SuperAdminPortal: React.FC = () => {
+  const [language, setLanguage] = useState<KioskLanguageCode>('en');
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(
     localStorage.getItem('biteflow_super_admin_logged_in') === 'true'
   );
@@ -27,7 +29,7 @@ export const SuperAdminPortal: React.FC = () => {
       setAdminUsername('');
       setAdminPassword('');
     } else {
-      setAdminLoginError('Invalid Platform Admin credentials.');
+      setAdminLoginError(ADMIN_TRANSLATIONS[language].invalidCredentials);
     }
   };
 
@@ -347,21 +349,40 @@ export const SuperAdminPortal: React.FC = () => {
   if (!isAdminLoggedIn) {
     return (
       <div style={{ maxWidth: '480px', margin: '4rem auto 2rem', padding: '1.5rem' }}>
-        <div className="glass-panel" style={{ padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+        <div className="glass-panel" style={{ padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', position: 'relative' }}>
+          
+          {/* Language Selector in top right */}
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
+              <span style={{ fontSize: '0.8rem' }}>🌐</span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
+                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                {Object.entries(KIOSK_LOCALES).map(([code, loc]) => (
+                  <option key={code} value={code} style={{ color: 'black' }}>
+                    {loc.flag} {loc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '0.5rem' }}>🛡️</span>
-            <h2 className="font-display" style={{ fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-              Platform Admin Login
+            <h2 className="font-display" style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
+              Biteflow
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-              Authorize to access platform stats, stalls credentials directory, and configure merchants.
+              {ADMIN_TRANSLATIONS[language].loginSubtitle}
             </p>
           </div>
 
           <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Admin Username
+                {ADMIN_TRANSLATIONS[language].username}
               </label>
               <input
                 type="text"
@@ -374,7 +395,7 @@ export const SuperAdminPortal: React.FC = () => {
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Admin Password
+                {ADMIN_TRANSLATIONS[language].password}
               </label>
               <input
                 type="password"
@@ -391,7 +412,7 @@ export const SuperAdminPortal: React.FC = () => {
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)' }}>
-              Sign In as Superuser
+              {ADMIN_TRANSLATIONS[language].loginButton}
             </button>
           </form>
 
@@ -430,19 +451,35 @@ export const SuperAdminPortal: React.FC = () => {
         <div>
           <span style={{ fontSize: '2.5rem' }}>🛡️</span>
           <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Platform Admin Console <span style={{ color: '#a78bfa', fontSize: '0.9rem', background: 'rgba(139,92,246,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.2)' }}>Superuser</span>
+            {ADMIN_TRANSLATIONS[language].welcome} <span style={{ color: '#a78bfa', fontSize: '0.9rem', background: 'rgba(139,92,246,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.2)' }}>Superuser</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-            Create food stalls, generate credentials, and manage merchants.
+            {language === 'es' ? 'Crea puestos de comida, genera credenciales y administra comerciantes.' : 'Create food stalls, generate credentials, and manage merchants.'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Admin Language Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '0.4rem 0.6rem' }}>
+            <span style={{ fontSize: '0.9rem' }}>🌐</span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
+              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
+            >
+              {Object.entries(KIOSK_LOCALES).map(([code, loc]) => (
+                <option key={code} value={code} style={{ color: 'black' }}>
+                  {loc.flag} {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button onClick={loadData} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <RefreshCw size={14} /> Refresh Directory
+            <RefreshCw size={14} /> {language === 'es' ? 'Actualizar directorio' : 'Refresh Directory'}
           </button>
           <button onClick={handleAdminLogout} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <LogOut size={14} /> Sign Out
+            <LogOut size={14} /> {ADMIN_TRANSLATIONS[language].logout}
           </button>
         </div>
       </div>
@@ -454,7 +491,7 @@ export const SuperAdminPortal: React.FC = () => {
             <Store size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Food Stalls</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{ADMIN_TRANSLATIONS[language].totalStalls}</span>
             <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
               {stalls.length}
             </h3>
@@ -466,7 +503,7 @@ export const SuperAdminPortal: React.FC = () => {
             <BarChart size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total System Menu Items</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{ADMIN_TRANSLATIONS[language].totalDishes}</span>
             <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
               {totalItems}
             </h3>
@@ -478,7 +515,7 @@ export const SuperAdminPortal: React.FC = () => {
             <UserCheck size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>System Orders Tracked</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{ADMIN_TRANSLATIONS[language].totalOrders}</span>
             <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
               {totalOrders}
             </h3>
@@ -510,7 +547,7 @@ export const SuperAdminPortal: React.FC = () => {
             transition: 'all 0.15s ease'
           }}
         >
-          <Store size={18} /> Food Stalls Directory
+          <Store size={18} /> {ADMIN_TRANSLATIONS[language].stallsTab}
         </button>
         <button
           type="button"
@@ -534,7 +571,7 @@ export const SuperAdminPortal: React.FC = () => {
             transition: 'all 0.15s ease'
           }}
         >
-          <Calendar size={18} /> Matches & Venue Stalls
+          <Calendar size={18} /> {ADMIN_TRANSLATIONS[language].matchesTab}
         </button>
       </div>
 
