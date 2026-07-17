@@ -2,7 +2,10 @@
 
 Biteflow is a modern, premium, and feature-rich Web Application designed for stadium food courts, campus cafeterias, and high-traffic event hubs. It streamlines the ordering process by allowing visitors to order from multiple food stalls in a single transaction, tracks order statuses in real-time, and integrates a smart AI Concierge powered by Gemini.
 
-**Live Demo URL**: [https://biteflow-6b1f9.web.app](https://biteflow-6b1f9.web.app)
+**Live Demo Links**:
+* 📱 **Customer Portal**: [https://biteflow-6b1f9.web.app](https://biteflow-6b1f9.web.app)
+* 🛡️ **Platform Admin Portal**: [https://biteflow-6b1f9.web.app/admin](https://biteflow-6b1f9.web.app/admin) (Credentials: `admin` / `biteflow-admin-2026`)
+* 🏪 **Stall Merchant Portal**: [https://biteflow-6b1f9.web.app/foodkiosk](https://biteflow-6b1f9.web.app/foodkiosk) (Stall merchant credentials can be generated in the Admin Portal)
 
 ---
 
