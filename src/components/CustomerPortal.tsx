@@ -917,10 +917,11 @@ Rules:
           <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {authMode === 'register' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].displayNameLabel}</label>
+                <label htmlFor="auth-display-name" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].displayNameLabel}</label>
                 <div style={{ position: 'relative' }}>
                   <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                   <input
+                    id="auth-display-name"
                     type="text"
                     required
                     placeholder="e.g. Alex Mercer"
@@ -933,10 +934,11 @@ Rules:
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].emailLabel}</label>
+              <label htmlFor="auth-email" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].emailLabel}</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <input
+                  id="auth-email"
                   type="email"
                   required
                   placeholder="name@campus.edu"
@@ -948,10 +950,11 @@ Rules:
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].passwordLabel}</label>
+              <label htmlFor="auth-password" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].passwordLabel}</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <input
+                  id="auth-password"
                   type={showAuthPassword ? "text" : "password"}
                   required
                   placeholder="••••••••"
@@ -973,12 +976,13 @@ Rules:
 
             {authMode === 'register' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <label htmlFor="auth-confirm-password" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {getConfirmPasswordLabel(language)}
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                   <input
+                    id="auth-confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
@@ -1085,12 +1089,13 @@ Rules:
             style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label htmlFor="select-match-field" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {USER_TRANSLATIONS[language].selectMatchLabel}
               </label>
               <div style={{ position: 'relative' }}>
                 <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <select
+                  id="select-match-field"
                   required
                   value={selectedMatchId}
                   onChange={(e) => setSelectedMatchId(e.target.value)}
@@ -1590,10 +1595,11 @@ Rules:
                           {/* Seating Form fields directly in the chat bubble */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
                             <div>
-                              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
+                              <label htmlFor="chat-stand-input" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
                                 Stand / Section
                               </label>
                               <input
+                                id="chat-stand-input"
                                 type="text"
                                 required
                                 placeholder="e.g. West Stand"
@@ -1604,10 +1610,11 @@ Rules:
                             </div>
                             
                             <div>
-                              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
+                              <label htmlFor="chat-seat-input" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
                                 Seat Number
                               </label>
                               <input
+                                id="chat-seat-input"
                                 type="text"
                                 required
                                 placeholder="e.g. C-14"
@@ -1685,13 +1692,13 @@ Rules:
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask BiteFlow AI Concierge..."
-                    aria-label="Ask BiteFlow AI Concierge"
+                    placeholder={USER_TRANSLATIONS[language].chatInputPlaceholder || "Ask BiteFlow AI Concierge..."}
+                    aria-label={USER_TRANSLATIONS[language].chatInputPlaceholder || "Ask BiteFlow AI Concierge"}
                     className="input-field"
                     style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
                   />
                   <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Send
+                    {USER_TRANSLATIONS[language].sendButton || 'Send'}
                   </button>
                   <button
                     type="button"
@@ -1743,8 +1750,12 @@ Rules:
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     {/* Search Bar */}
                     <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                      <label htmlFor="search-foods-input" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                        {USER_TRANSLATIONS[language].searchPlaceholder}
+                      </label>
                       <Search size={18} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                       <input
+                        id="search-foods-input"
                         type="search"
                         className="input-field"
                         placeholder={USER_TRANSLATIONS[language].searchPlaceholder}
@@ -2225,10 +2236,11 @@ Rules:
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      <label htmlFor="cart-stand-input" style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                         Stand / Section
                       </label>
                       <input
+                        id="cart-stand-input"
                         type="text"
                         required
                         placeholder="e.g. West Stand"
@@ -2239,10 +2251,11 @@ Rules:
                     </div>
                     
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      <label htmlFor="cart-seat-input" style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                         Seat Number
                       </label>
                       <input
+                        id="cart-seat-input"
                         type="text"
                         required
                         placeholder="e.g. C-14"
@@ -2258,10 +2271,11 @@ Rules:
               {/* Order Notes (only show if items exist) */}
               {cart.length > 0 && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '0.4rem' }}>
+                  <label htmlFor="cart-notes-input" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '0.4rem' }}>
                     {USER_TRANSLATIONS[language].notesLabel || 'Special Notes / Instructions'}
                   </label>
                   <textarea
+                    id="cart-notes-input"
                     className="input-field"
                     placeholder={USER_TRANSLATIONS[language].notesPlaceholder || 'e.g. Extra sauce, no onions...'}
                     value={checkoutNotes}

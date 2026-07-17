@@ -20,6 +20,7 @@ export const SuperAdminPortal: React.FC = () => {
   );
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminLoginError, setAdminLoginError] = useState('');
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -401,10 +402,11 @@ export const SuperAdminPortal: React.FC = () => {
 
           <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+              <label htmlFor="admin-username-field" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                 {ADMIN_TRANSLATIONS[language].username}
               </label>
               <input
+                id="admin-username-field"
                 type="text"
                 className="input-field"
                 placeholder="admin"
@@ -414,16 +416,29 @@ export const SuperAdminPortal: React.FC = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+              <label htmlFor="admin-password-field" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                 {ADMIN_TRANSLATIONS[language].password}
               </label>
-              <input
-                type="password"
-                className="input-field"
-                placeholder="••••••••••••"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="admin-password-field"
+                  type={showAdminPassword ? "text" : "password"}
+                  className="input-field"
+                  placeholder="••••••••••••"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  style={{ paddingRight: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showAdminPassword}
+                  style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  {showAdminPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                </button>
+              </div>
               {adminLoginError && (
                 <p style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
                   ⚠️ {adminLoginError}

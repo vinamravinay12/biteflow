@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { db } from '../utils/database';
 import type { Stall, StallSession } from '../types';
 import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, USER_TRANSLATIONS, type KioskLanguageCode } from '../utils/translations';
@@ -16,6 +17,7 @@ const toSession = (stall: Stall): StallSession => {
 export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [language, setLanguage] = useState<KioskLanguageCode>('en');
   useDocumentLanguage(language);
@@ -75,10 +77,11 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+            <label htmlFor="kiosk-username-field" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
               {KIOSK_TRANSLATIONS[language].usernameLabel}
             </label>
             <input
+              id="kiosk-username-field"
               type="text"
               className="input-field"
               placeholder="e.g. burger_junction"
@@ -89,16 +92,29 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+            <label htmlFor="kiosk-password-field" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
               {USER_TRANSLATIONS[language].passwordLabel}
             </label>
-            <input
-              type="password"
-              className="input-field"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="kiosk-password-field"
+                type={showPassword ? "text" : "password"}
+                className="input-field"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingRight: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+              </button>
+            </div>
             {loginError && (
               <p style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
                 ⚠️ {loginError}
