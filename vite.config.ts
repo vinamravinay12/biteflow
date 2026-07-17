@@ -18,6 +18,12 @@ export default defineConfig({
       // exercised through the app; the pure utils below carry the core rules.
       include: ['src/utils/**/*.ts'],
       exclude: ['src/utils/**/*.test.ts', 'src/utils/firebase.ts'],
+      thresholds: {
+        lines: 35,
+        statements: 35,
+        functions: 40,
+        branches: 35
+      }
     },
   },
 })

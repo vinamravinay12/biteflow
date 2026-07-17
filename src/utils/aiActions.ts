@@ -102,3 +102,12 @@ export function getMatchingItems(text: string, items: MenuItem[]): MenuItem[] {
            item.description.toLowerCase().includes(t);
   });
 }
+
+/**
+ * Sanitize and length-clamp user inputs to prevent XSS, HTML injection,
+ * and prompt injection.
+ */
+export function sanitizePrompt(rawText: string): string {
+  const clean = (rawText || '').replace(/<[^>]*>/g, '').trim();
+  return clean.length > 500 ? clean.substring(0, 500) : clean;
+}

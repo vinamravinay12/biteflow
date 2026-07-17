@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseAiResponse, getMatchingItems } from './aiActions';
+import { parseAiResponse, getMatchingItems, sanitizePrompt } from './aiActions';
 import type { MenuItem } from '../types';
 
 // Minimal MenuItem factory so tests declare only the fields they care about.
@@ -106,5 +106,21 @@ describe('getMatchingItems — offline fallback NLU', () => {
 
   it('returns empty for non-food gibberish', () => {
     expect(getMatchingItems('zzzqqq', MENU)).toEqual([]);
+  });
+});
+
+describe('sanitizePrompt — prompt-injection & XSS mitigation', () => {
+  it('strips html tags to avoid XSS', () => {
+    const raw = 'I want a <script>alert("Hacked")</script> burger';
+    expect(sanitizePrompt(raw)).toBe('I want a alert("Hacked") burger');
+  });
+
+  it('clamps prompt length to 500 characters', () => {
+    const massive = 'a'.repeat(600);
+    expect(sanitizePrompt(massive).length).toBe(500);
+  });
+
+  it('handles empty or undefined inputs gracefully', () => {
+    expect(sanitizePrompt('')).toBe('');
   });
 });

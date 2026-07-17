@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, UserWallet, Match } from '../types';
 import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils/translations';
-import { parseAiResponse, getMatchingItems } from '../utils/aiActions';
+import { parseAiResponse, getMatchingItems, sanitizePrompt } from '../utils/aiActions';
 import { computeCartTotal, groupCartByKiosk } from '../utils/cart';
 import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import {
@@ -10,7 +10,7 @@ import {
   History, Sparkles, ChevronRight, Info, CheckCircle, X,
   LogOut, User, Lock, Mail, Calendar, Eye, EyeOff
 } from 'lucide-react';
-import { auth } from '../utils/firebase';
+import { auth, ensureFirebaseAuth } from '../utils/firebase';
 import {
   onAuthStateChanged, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, signOut, updateProfile
@@ -405,13 +405,20 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
 
     if (auth) {
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
-        if (firebaseUser) {
+        // Anonymous users are the Firestore-access baseline (guests browsing
+        // before they register) — they must NOT count as "logged in" in the UI,
+        // otherwise the sign-in screen is skipped. Only a real email/password
+        // identity flips the app into the authenticated ordering experience.
+        if (firebaseUser && !firebaseUser.isAnonymous) {
           const name = firebaseUser.displayName || firebaseUser.email || 'Customer';
           const email = firebaseUser.email || '';
           await applyCustomerIdentity(firebaseUser.uid, name, email);
           setUser({ uid: firebaseUser.uid, email, displayName: name });
         } else {
           setUser(null);
+          // Re-establish the anonymous baseline (e.g. right after logout) so the
+          // menu and public data stay readable under the auth-required rules.
+          if (!firebaseUser) ensureFirebaseAuth();
         }
       });
     } else {
@@ -598,14 +605,17 @@ Rules:
   };
 
   const handleSendMessage = async (textToSend?: string) => {
-    const text = (textToSend || chatInput).trim();
-    if (!text) return;
+    const rawText = (textToSend || chatInput).trim();
+    if (!rawText) return;
+
+    const sanitizedText = sanitizePrompt(rawText);
+    const text = sanitizedText;
 
     // Add user message
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       sender: 'user',
-      text,
+      text: sanitizedText,
       timestamp: new Date().toISOString()
     };
 
@@ -617,7 +627,7 @@ Rules:
     // Check if we can use the live Gemini API
     if (geminiApiKey.trim()) {
       try {
-        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey, language);
+        const rawResponse = await callGeminiAPI(sanitizedText, chatMessages, geminiApiKey, language);
 
         // Parse control tags (ADD_TO_CART / ITEMS / SHOW_CHECKOUT) and strip
         // them from the visible text. Only additions that resolve to a real,
