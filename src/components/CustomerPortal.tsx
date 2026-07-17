@@ -5,7 +5,7 @@ import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils
 import {
   Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock,
   History, Sparkles, ChevronRight, Info, CheckCircle, X,
-  LogOut, User, Lock, Mail, Calendar
+  LogOut, User, Lock, Mail, Calendar, Eye, EyeOff
 } from 'lucide-react';
 import { auth } from '../utils/firebase';
 import {
@@ -189,6 +189,19 @@ const CHAT_FLOW_TRANSLATIONS = {
   }
 };
 
+const getConfirmPasswordLabel = (lang: string): string => {
+  switch (lang) {
+    case 'es': return 'Confirmar Contraseña';
+    case 'fr': return 'Confirmer le mot de passe';
+    case 'de': return 'Passwort bestätigen';
+    case 'it': return 'Conferma Password';
+    case 'pt': return 'Confirmar Senha';
+    case 'nl': return 'Wachtwoord Bevestigen';
+    case 'ar': return 'تأكيد كلمة المرور';
+    default: return 'Confirm Password';
+  }
+};
+
 export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [stalls, setStalls] = useState<Stall[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -218,6 +231,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authDisplayName, setAuthDisplayName] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -285,11 +301,25 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     db.setCustomerName(name);
     await db.ensureUserProfile(uid, 'customer', email, name);
   };
-
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setAuthLoading(true);
+
+    if (authMode === 'register' && authPassword !== authConfirmPassword) {
+      setAuthError(
+        language === 'es' ? 'Las contraseñas no coinciden.' :
+        language === 'fr' ? 'Les mots de passe ne correspondent pas.' :
+        language === 'de' ? 'Passwörter stimmen nicht überein.' :
+        language === 'it' ? 'Le password non coincidono.' :
+        language === 'pt' ? 'As senhas não coincidem.' :
+        language === 'nl' ? 'Wachtwoorden komen niet overeen.' :
+        language === 'ar' ? 'كلمات المرور غير متطابقة.' :
+        'Passwords do not match.'
+      );
+      setAuthLoading(false);
+      return;
+    }
 
     if (auth) {
       try {
@@ -992,15 +1022,48 @@ Rules:
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                 <input
-                  type="password"
+                  type={showAuthPassword ? "text" : "password"}
                   required
                   placeholder="••••••••"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 2.5rem 0.6rem 2.5rem', color: 'white', boxSizing: 'border-box' }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowAuthPassword(!showAuthPassword)}
+                  style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  {showAuthPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
+
+            {authMode === 'register' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {getConfirmPasswordLabel(language)}
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={authConfirmPassword}
+                    onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                    style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 2.5rem 0.6rem 2.5rem', color: 'white', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"
