@@ -11,6 +11,14 @@ Biteflow is a modern, premium, and feature-rich Web Application designed for sta
 
 ## 🎯 Chosen Vertical & Persona
 * **Vertical**: Stadium & Event Venue Food Court Management (FIFA Match Roster & Delivery Kiosks)
+* **The Problem (Reasoning behind the project)**: 
+  At high-traffic stadiums and events, visitor break times (like halftime or recess) are extremely short and chaotic. Attendees face three major pain points:
+  1. **Huge Queues**: Standing in long lines at individual stalls means missing the live action of the game.
+  2. **Information Overload & Confusion**: Navigating multiple separate menus in a hurry leads to confusion and decision fatigue.
+  3. **Disjointed Transactions**: Ordering different types of food (e.g. tacos and bubble tea) requires making multiple payments and waiting in multiple separate lines.
+  
+  **Biteflow** solves this by unifying all vendors into a single cart checkout, enabling seat delivery tracking, and utilizing a multilingual AI Concierge to help visitors search, customize, and order instantly.
+
 * **Persona**: An all-in-one platform coordinating:
   1. **Platform Admins**: Register food stalls, generate secure merchant credentials, and schedule match events.
   2. **Food Kiosk Merchants**: Manage menu availability, receive and decline orders with refund options, and monitor live sales analytics.
