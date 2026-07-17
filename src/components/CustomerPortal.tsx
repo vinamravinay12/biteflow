@@ -96,11 +96,32 @@ const TRANSLATIONS = {
     confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.de.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.de.aiHelp,
     invalidQty: USER_TRANSLATIONS.de.aiInvalidQty
+  },
+  nl: {
+    greeting: USER_TRANSLATIONS.nl.aiGreeting,
+    noItems: USER_TRANSLATIONS.nl.aiNoItems,
+    foundItems: USER_TRANSLATIONS.nl.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.nl.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.nl.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.nl.aiHelp,
+    invalidQty: USER_TRANSLATIONS.nl.aiInvalidQty
+  },
+  ar: {
+    greeting: USER_TRANSLATIONS.ar.aiGreeting,
+    noItems: USER_TRANSLATIONS.ar.aiNoItems,
+    foundItems: USER_TRANSLATIONS.ar.aiFoundItems,
+    askQuantity: (name: string) => `${USER_TRANSLATIONS.ar.aiAskQuantity} ("${name}")`,
+    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.ar.aiConfirmed} (${qty}x "${name}")`,
+    help: USER_TRANSLATIONS.ar.aiHelp,
+    invalidQty: USER_TRANSLATIONS.ar.aiInvalidQty
   }
 };
 
 const detectLanguage = (text: string): LanguageCode => {
   const t = text.toLowerCase();
+  if (/[\u0600-\u06FF]/.test(text)) {
+    return 'ar';
+  }
   if (t.includes('quiero') || t.includes('pedir') || t.includes('hamburguesa') || t.includes('hola') || t.includes('comida') || t.includes('tacos') || t.includes('por favor') || t.includes('gracias') || t.includes('que tal')) {
     return 'es';
   }
@@ -112,6 +133,9 @@ const detectLanguage = (text: string): LanguageCode => {
   }
   if (t.includes('ciao') || t.includes('vorrei') || t.includes('ordinare') || t.includes('per favore') || t.includes('dolce') || t.includes('grazie')) {
     return 'it';
+  }
+  if (t.includes('graag') || t.includes('alstublieft') || t.includes('dank u') || t.includes('eten') || t.includes('kaart')) {
+    return 'nl';
   }
   if (t.includes('hallo') || t.includes('bitte') || t.includes('möchte') || t.includes('bestellen') || t.includes('danke') || t.includes('karte')) {
     return 'de';
@@ -176,6 +200,18 @@ const CHAT_FLOW_TRANSLATIONS = {
     askPayment: USER_TRANSLATIONS.de.aiAskPayment,
     doneKeywords: ['fertig', 'das wars', 'genug', 'bezahlen', 'bestellen', 'nein danke', 'nein', 'fertig', 'stop'],
     invalidSeating: USER_TRANSLATIONS.de.aiInvalidSeating
+  },
+  nl: {
+    moreQuestion: USER_TRANSLATIONS.nl.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.nl.aiAskPayment,
+    doneKeywords: ['klaar', 'dat was het', 'niets meer', 'genoeg', 'afrekenen', 'betalen', 'gereed', 'nee bedankt', 'nee', 'klaar', 'stop'],
+    invalidSeating: USER_TRANSLATIONS.nl.aiInvalidSeating
+  },
+  ar: {
+    moreQuestion: USER_TRANSLATIONS.ar.aiMoreQuestion,
+    askPayment: USER_TRANSLATIONS.ar.aiAskPayment,
+    doneKeywords: ['خلاص', 'انتهيت', 'تم', 'يكفي', 'دفع', 'حساب', 'جاهز', 'لا شكرا', 'لا', 'خلصت'],
+    invalidSeating: USER_TRANSLATIONS.ar.aiInvalidSeating
   }
 };
 
@@ -861,7 +897,7 @@ Rules:
 
   if (!user) {
     return (
-      <div style={{ maxWidth: '460px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
+      <div style={{ maxWidth: '460px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
         <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
           
           {/* Language Selector in top right */}
@@ -1035,7 +1071,7 @@ Rules:
 
   if (user && !hasSubmittedMatchDetails) {
     return (
-      <div style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}>
+      <div style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
         <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
           
           {/* Language Selector in top right */}
@@ -1123,7 +1159,7 @@ Rules:
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', animation: 'slide-up 0.4s ease' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', animation: 'slide-up 0.4s ease' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       
       {/* Top Welcome Panel */}
       <div 
