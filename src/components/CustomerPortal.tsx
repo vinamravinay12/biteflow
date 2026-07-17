@@ -559,12 +559,12 @@ The active kiosks and their menu items are:
 ${JSON.stringify(activeMenuInfo)}
 
 Rules:
-1. Reply in the user's selected language: "${currentLang}". All responses, questions, and confirmations MUST be written in this language unless the user speaks to you in a different one.
+1. You MUST write all your responses, greetings, questions, recommendations, and item addition confirmations in the user's selected language: "${currentLang}". Under NO circumstances should you reply in English unless "${currentLang}" is "en". Translate all parts of your reply into "${currentLang}".
 2. Recommend matching items. Suggest 1 to 4 items.
-3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?" (translated into the current language).
-4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" (translated into the current language) and you MUST append [SHOW_CHECKOUT] at the very end of your response.
+3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?" (translated into "${currentLang}").
+4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" (translated into "${currentLang}") and you MUST append [SHOW_CHECKOUT] at the very end of your response.
 5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.
-6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added.`;
+6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added (translated into "${currentLang}").`;
 
     const contents = [];
     const recentHistory = history.slice(-6);
@@ -626,7 +626,7 @@ Rules:
     // Check if we can use the live Gemini API
     if (geminiApiKey.trim()) {
       try {
-        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey, language);
+        const rawResponse = await callGeminiAPI(text, updatedHistory, geminiApiKey, language);
         
         let parsedText = rawResponse;
         let attachedItems: MenuItem[] = [];
