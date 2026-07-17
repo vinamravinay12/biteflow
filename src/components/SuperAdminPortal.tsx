@@ -454,7 +454,7 @@ export const SuperAdminPortal: React.FC = () => {
             {ADMIN_TRANSLATIONS[language].welcome} <span style={{ color: '#a78bfa', fontSize: '0.9rem', background: 'rgba(139,92,246,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.2)' }}>Superuser</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-            {language === 'es' ? 'Crea puestos de comida, genera credenciales y administra comerciantes.' : 'Create food stalls, generate credentials, and manage merchants.'}
+            {ADMIN_TRANSLATIONS[language].welcomeSubtitle}
           </p>
         </div>
 
@@ -476,7 +476,7 @@ export const SuperAdminPortal: React.FC = () => {
           </div>
 
           <button onClick={loadData} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <RefreshCw size={14} /> {language === 'es' ? 'Actualizar directorio' : 'Refresh Directory'}
+            <RefreshCw size={14} /> {ADMIN_TRANSLATIONS[language].refreshDirectory}
           </button>
           <button onClick={handleAdminLogout} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogOut size={14} /> {ADMIN_TRANSLATIONS[language].logout}

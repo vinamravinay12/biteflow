@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db } from '../utils/database';
 import type { Stall, StallSession } from '../types';
-import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
+import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, USER_TRANSLATIONS, type KioskLanguageCode } from '../utils/translations';
 
 interface StallLoginProps {
   onLoginSuccess: (stall: StallSession) => void;
@@ -87,7 +87,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
 
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-              {language === 'es' ? 'Contraseña' : 'Password'}
+              {USER_TRANSLATIONS[language].passwordLabel}
             </label>
             <input
               type="password"

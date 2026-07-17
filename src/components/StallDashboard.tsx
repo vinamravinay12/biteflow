@@ -28,6 +28,61 @@ interface KioskOrderView {
   status: OrderStatus;
 }
 
+const DASHBOARD_LOCALES = {
+  en: {
+    emptyQueueAll: "Your stall hasn't received any orders yet.",
+    emptyQueueFilter: (status: string) => `No orders with status "${status}".`,
+    placedOn: "Placed on",
+    stadiumDelivery: "Stadium Delivery",
+    match: "Match",
+    location: "Location",
+    orderFinalized: "Order finalized",
+    reasonStock: "Finished / Out of Stock",
+    reasonNotAvailable: "Not Available",
+    reasonBusy: "Kiosk Too Busy",
+    reasonTechnical: "Technical Issues"
+  },
+  es: {
+    emptyQueueAll: "Tu puesto aún no ha recibido ningún pedido.",
+    emptyQueueFilter: (status: string) => `No hay pedidos con el estado "${status}".`,
+    placedOn: "Realizado el",
+    stadiumDelivery: "Entrega en el Estadio",
+    match: "Partido",
+    location: "Ubicación",
+    orderFinalized: "Pedido finalizado",
+    reasonStock: "Agotado / Sin stock",
+    reasonNotAvailable: "No disponible",
+    reasonBusy: "Puesto muy ocupado",
+    reasonTechnical: "Problemas técnicos"
+  },
+  nl: {
+    emptyQueueAll: "Jouw kraam heeft nog geen bestellingen ontvangen.",
+    emptyQueueFilter: (status: string) => `Geen bestellingen met status "${status}".`,
+    placedOn: "Geplaatst op",
+    stadiumDelivery: "Stadion Bezorging",
+    match: "Wedstrijd",
+    location: "Locatie",
+    orderFinalized: "Bestelling afgerond",
+    reasonStock: "Uitverkocht / Geen voorraad",
+    reasonNotAvailable: "Niet beschikbaar",
+    reasonBusy: "Kraam te druk",
+    reasonTechnical: "Technische problemen"
+  },
+  ar: {
+    emptyQueueAll: "لم يتلق كشكك أي طلبات بعد.",
+    emptyQueueFilter: (status: string) => `لا توجد طلبات بالحالة "${status}".`,
+    placedOn: "تم تقديمه في",
+    stadiumDelivery: "التوصيل في الملعب",
+    match: "المباراة",
+    location: "الموقع",
+    orderFinalized: "تم إنهاء الطلب",
+    reasonStock: "نفاد الكمية / غير متوفر",
+    reasonNotAvailable: "غير متاح",
+    reasonBusy: "الكشك مزدحم للغاية",
+    reasonTechnical: "مشاكل تقنية"
+  }
+};
+
 export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'analytics'>('orders');
   const [language, setLanguage] = useState<KioskLanguageCode>('en');
@@ -555,7 +610,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               <ShoppingBag size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
               <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{KIOSK_TRANSLATIONS[language].noOrders}</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                {orderFilter === 'all' ? (language === 'es' ? 'Tu puesto aún no ha recibido ningún pedido.' : "Your stall hasn't received any orders yet.") : (language === 'es' ? `No hay pedidos con el estado "${orderFilter}".` : `No orders with status "${orderFilter}".`)}
+                {orderFilter === 'all' ? DASHBOARD_LOCALES[language].emptyQueueAll : DASHBOARD_LOCALES[language].emptyQueueFilter(orderFilter)}
               </p>
             </div>
           ) : (
@@ -588,7 +643,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                         </span>
                       </div>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                        {language === 'es' ? 'Realizado el' : 'Placed on'} {new Date(order.orderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(order.orderTime).toLocaleDateString()})
+                        {DASHBOARD_LOCALES[language].placedOn} {new Date(order.orderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(order.orderTime).toLocaleDateString()})
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -642,11 +697,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span>🏟️</span>
-                          <span><strong>{language === 'es' ? 'Entrega en el Estadio:' : 'Stadium Delivery:'}</strong></span>
+                          <span><strong>{DASHBOARD_LOCALES[language].stadiumDelivery}:</strong></span>
                         </div>
                         <div style={{ marginLeft: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                          <div>{language === 'es' ? 'Partido:' : 'Match:'} <strong style={{ color: 'white' }}>{order.matchName}</strong></div>
-                          <div>{language === 'es' ? 'Ubicación:' : 'Location:'} <strong style={{ color: 'white' }}>{order.stand} ({KIOSK_TRANSLATIONS[language].seatLabel} {order.seatNumber})</strong></div>
+                          <div>{DASHBOARD_LOCALES[language].match}: <strong style={{ color: 'white' }}>{order.matchName}</strong></div>
+                          <div>{DASHBOARD_LOCALES[language].location}: <strong style={{ color: 'white' }}>{order.stand} ({KIOSK_TRANSLATIONS[language].seatLabel} {order.seatNumber})</strong></div>
                         </div>
                       </div>
                     )}
@@ -701,7 +756,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                                     cursor: 'pointer'
                                   }}
                                 >
-                                  {reason === 'Finished / Out of Stock' ? (language === 'es' ? 'Agotado / Sin stock' : 'Finished / Out of Stock') : reason === 'Not Available' ? (language === 'es' ? 'No disponible' : 'Not Available') : reason === 'Kiosk Too Busy' ? (language === 'es' ? 'Puesto muy ocupado' : 'Kiosk Too Busy') : (language === 'es' ? 'Problemas técnicos' : 'Technical Issues')}
+                                  {reason === 'Finished / Out of Stock' ? DASHBOARD_LOCALES[language].reasonStock : reason === 'Not Available' ? DASHBOARD_LOCALES[language].reasonNotAvailable : reason === 'Kiosk Too Busy' ? DASHBOARD_LOCALES[language].reasonBusy : DASHBOARD_LOCALES[language].reasonTechnical}
                                 </button>
                               ))}
                             </div>
@@ -806,7 +861,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
                       {(order.status === 'completed' || order.status === 'cancelled') && (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                          {language === 'es' ? 'Pedido finalizado' : 'Order finalized'}
+                          {DASHBOARD_LOCALES[language].orderFinalized}
                         </span>
                       )}
                     </div>
