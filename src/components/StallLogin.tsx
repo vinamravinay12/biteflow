@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db } from '../utils/database';
 import type { Stall, StallSession } from '../types';
 
@@ -15,16 +15,6 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [currentStalls, setCurrentStalls] = useState<Stall[]>([]);
-
-  // Load current stalls for testing links on mount
-  useEffect(() => {
-    const fetchStalls = async () => {
-      const list = await db.getStalls();
-      setCurrentStalls(list);
-    };
-    fetchStalls();
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,17 +32,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
       db.setActiveStall(session);
       onLoginSuccess(session);
     } else {
-      setLoginError('Invalid username or password. Check the sandbox accounts below!');
-    }
-  };
-
-  const handleQuickLogin = async (uname: string) => {
-    const stalls = await db.getStalls();
-    const stall = stalls.find(s => s.ownerUsername === uname);
-    if (stall) {
-      const session = toSession(stall);
-      db.setActiveStall(session);
-      onLoginSuccess(session);
+      setLoginError('Invalid username or password.');
     }
   };
 
@@ -106,41 +86,6 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
             Login to Merchant Console
           </button>
         </form>
-
-        <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sandbox Quick-Login</span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-        </div>
-
-        {/* Quick-login by username only — passwords are encrypted and only ever
-            decrypted within the Platform Admin portal, not shown here. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Stalls (Quick Login):</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
-            {currentStalls.map(s => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => handleQuickLogin(s.ownerUsername)}
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.8rem',
-                  textAlign: 'left'
-                }}
-              >
-                <span>{s.logoUrl} <strong>{s.name}</strong></span>
-                <code style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
-                  User: {s.ownerUsername}
-                </code>
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div style={{ textAlign: 'center', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)', marginTop: '1.5rem' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>

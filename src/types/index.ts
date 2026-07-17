@@ -53,6 +53,7 @@ export interface KioskOrderEntry {
   items: OrderLineItem[];
   subtotal: number;
   status: OrderStatus;
+  declineReason?: string;
 }
 
 export interface Order {

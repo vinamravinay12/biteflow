@@ -27,7 +27,7 @@ export type SeedStall = Omit<Stall, 'ownerPasswordEnc'> & { ownerPasswordPlain: 
 
 export const initialStalls: SeedStall[] = [
   {
-    id: 'stall-taco',
+    id: 'stall-721839',
     name: 'Taco Del Sol',
     description: 'Vibrant street-style Mexican tacos, quesadillas, and fresh guacamole.',
     ownerUsername: 'taco_delsol',
@@ -39,10 +39,10 @@ export const initialStalls: SeedStall[] = [
     city: 'Mexico City',
   },
   {
-    id: 'stall-burger',
-    name: 'Burger Junction',
+    id: 'stall-840291',
+    name: 'Smash Burgers',
     description: 'Gourmet smashed beef burgers, crispy loaded fries, and signature sauces.',
-    ownerUsername: 'burger_junction',
+    ownerUsername: 'smash_burgers',
     ownerPasswordPlain: 'crispy-burger-190',
     logoUrl: '🍔',
     bannerColor: '#ef4444', // Red
@@ -51,7 +51,7 @@ export const initialStalls: SeedStall[] = [
     city: 'Dallas',
   },
   {
-    id: 'stall-wok',
+    id: 'stall-384729',
     name: 'Wok & Roll',
     description: 'Express stir-fry noodles, dumplings, and flavorful Asian street food.',
     ownerUsername: 'wok_roll',
@@ -63,7 +63,7 @@ export const initialStalls: SeedStall[] = [
     city: 'Vancouver',
   },
   {
-    id: 'stall-sweet',
+    id: 'stall-902847',
     name: 'Sweet Retreat',
     description: 'Warm waffles, artisanal gelato, bubble tea, and custom milkshakes.',
     ownerUsername: 'sweet_retreat',
@@ -71,6 +71,30 @@ export const initialStalls: SeedStall[] = [
     logoUrl: '🍦',
     bannerColor: '#ec4899', // Pink
     rating: 4.9,
+    active: true,
+    city: 'Vancouver',
+  },
+  {
+    id: 'stall-842910',
+    name: 'Pizza Bella',
+    description: 'Authentic wood-fired Neapolitan pizzas, cheesy garlic bread, and classic tiramisu.',
+    ownerUsername: 'pizza_bella',
+    ownerPasswordPlain: 'crispy-pizza-842',
+    logoUrl: '🍕',
+    bannerColor: '#06b6d4', // Cyan
+    rating: 4.6,
+    active: true,
+    city: 'Dallas',
+  },
+  {
+    id: 'stall-401928',
+    name: 'Brew & Bake',
+    description: 'Freshly brewed artisan coffees, iced lattes, warm croissants, and sweet pastries.',
+    ownerUsername: 'brew_bake',
+    ownerPasswordPlain: 'golden-chef-401',
+    logoUrl: '☕',
+    bannerColor: '#8b5cf6', // Purple
+    rating: 4.7,
     active: true,
     city: 'Vancouver',
   }
@@ -82,7 +106,7 @@ export const initialMenuItems: MenuItem[] = [
   // Taco Del Sol
   {
     id: 'taco-1',
-    stallId: 'stall-taco',
+    stallId: 'stall-721839',
     stallName: 'Taco Del Sol',
     name: 'Birria Beef Tacos (3x)',
     description: 'Slow-cooked shredded beef, melted Monterey Jack cheese, cilantro, onions, with warm consommé for dipping.',
@@ -94,7 +118,7 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'taco-2',
-    stallId: 'stall-taco',
+    stallId: 'stall-721839',
     stallName: 'Taco Del Sol',
     name: 'Chipotle Chicken Quesadilla',
     description: 'Grilled chicken breast tossed in chipotle crema, toasted in a flour tortilla with melted cheese.',
@@ -106,7 +130,7 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'taco-3',
-    stallId: 'stall-taco',
+    stallId: 'stall-721839',
     stallName: 'Taco Del Sol',
     name: 'Loaded Nachos & Guac',
     description: 'Crispy corn tortilla chips topped with warm cheese sauce, black beans, pico de gallo, and fresh guacamole.',
@@ -117,11 +141,11 @@ export const initialMenuItems: MenuItem[] = [
     prepTime: 5
   },
 
-  // Burger Junction
+  // Smash Burgers
   {
     id: 'burger-1',
-    stallId: 'stall-burger',
-    stallName: 'Burger Junction',
+    stallId: 'stall-840291',
+    stallName: 'Smash Burgers',
     name: 'The Double Smash Burger',
     description: 'Two smashed Angus beef patties, double American cheese, caramelized onions, house pickles, and junction sauce on brioche.',
     price: 11.49,
@@ -132,8 +156,8 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'burger-2',
-    stallId: 'stall-burger',
-    stallName: 'Burger Junction',
+    stallId: 'stall-840291',
+    stallName: 'Smash Burgers',
     name: 'Crispy Truffle Fries',
     description: 'Golden fries tossed in white truffle oil, grated parmesan, and chopped fresh parsley. Served with garlic aioli.',
     price: 5.99,
@@ -144,8 +168,8 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'burger-3',
-    stallId: 'stall-burger',
-    stallName: 'Burger Junction',
+    stallId: 'stall-840291',
+    stallName: 'Smash Burgers',
     name: 'Spicy Buffalo Chicken Sandwich',
     description: 'Buttermilk fried chicken breast drenched in buffalo sauce, cool ranch coleslaw, pickles on a toasted bun.',
     price: 10.99,
@@ -158,7 +182,7 @@ export const initialMenuItems: MenuItem[] = [
   // Wok & Roll
   {
     id: 'wok-1',
-    stallId: 'stall-wok',
+    stallId: 'stall-384729',
     stallName: 'Wok & Roll',
     name: 'Classic Pad Thai Noodle',
     description: 'Stir-fried rice noodles in tangy tamarind sauce, bean sprouts, crushed peanuts, egg, and fresh chives with choice of chicken.',
@@ -170,7 +194,7 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'wok-2',
-    stallId: 'stall-wok',
+    stallId: 'stall-384729',
     stallName: 'Wok & Roll',
     name: 'Pan-Fried Pork Gyoza (6x)',
     description: 'Crispy pan-fried Japanese style dumplings stuffed with seasoned minced pork and cabbage, served with soy dipping sauce.',
@@ -182,7 +206,7 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'wok-3',
-    stallId: 'stall-wok',
+    stallId: 'stall-384729',
     stallName: 'Wok & Roll',
     name: 'Teriyaki Salmon Donburi',
     description: 'Grilled Atlantic salmon glazed with sweet teriyaki sauce, served over warm Japanese rice, edamame, and pickled ginger.',
@@ -196,7 +220,7 @@ export const initialMenuItems: MenuItem[] = [
   // Sweet Retreat
   {
     id: 'sweet-1',
-    stallId: 'stall-sweet',
+    stallId: 'stall-902847',
     stallName: 'Sweet Retreat',
     name: 'Strawberry Nutella Waffle',
     description: 'Freshly baked Belgian waffle drizzled with warm Nutella, loaded with fresh strawberries and whipped cream.',
@@ -208,7 +232,7 @@ export const initialMenuItems: MenuItem[] = [
   },
   {
     id: 'sweet-2',
-    stallId: 'stall-sweet',
+    stallId: 'stall-902847',
     stallName: 'Sweet Retreat',
     name: 'Classic Brown Sugar Boba',
     description: 'Rich brown sugar syrup, slow-cooked warm tapioca pearls, cold creamy fresh milk, topped with cheese foam.',
@@ -217,6 +241,58 @@ export const initialMenuItems: MenuItem[] = [
     category: 'Beverage',
     isAvailable: true,
     prepTime: 4
+  },
+  
+  // Pizza Bella
+  {
+    id: 'pizza-1',
+    stallId: 'stall-842910',
+    stallName: 'Pizza Bella',
+    name: 'Margherita Pizza (12")',
+    description: 'Classic tomato sauce, fresh mozzarella, fresh basil, and extra virgin olive oil.',
+    price: 13.99,
+    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500',
+    category: 'Mains',
+    isAvailable: true,
+    prepTime: 9
+  },
+  {
+    id: 'pizza-2',
+    stallId: 'stall-842910',
+    stallName: 'Pizza Bella',
+    name: 'Cheesy Garlic Bread',
+    description: 'Toasted garlic baguette topped with melted mozzarella cheese and fresh oregano.',
+    price: 5.99,
+    imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500',
+    category: 'Sides',
+    isAvailable: true,
+    prepTime: 5
+  },
+
+  // Brew & Bake
+  {
+    id: 'brew-1',
+    stallId: 'stall-401928',
+    stallName: 'Brew & Bake',
+    name: 'Iced Caramel Macchiato',
+    description: 'Fresh espresso, cold milk, rich caramel drizzle, and sweet vanilla syrup.',
+    price: 5.49,
+    imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500',
+    category: 'Beverage',
+    isAvailable: true,
+    prepTime: 3
+  },
+  {
+    id: 'brew-2',
+    stallId: 'stall-401928',
+    stallName: 'Brew & Bake',
+    name: 'Warm Butter Croissant',
+    description: 'Flaky, golden-brown French pastry served warm with butter and jam.',
+    price: 3.99,
+    imageUrl: 'https://images.unsplash.com/photo-1562376502-6f769499c886?w=500',
+    category: 'Dessert',
+    isAvailable: true,
+    prepTime: 2
   }
 ];
 
@@ -231,10 +307,10 @@ export const initialOrders: Record<string, Order[]> = {
     customerName: DEFAULT_CUSTOMER_NAME,
     stand: 'Section 114',
     seatNumber: 'Row F, Seat 12',
-    kioskIds: ['stall-taco', 'stall-sweet'],
+    kioskIds: ['stall-721839', 'stall-902847'],
     kioskOrders: {
-      'stall-taco': {
-        kioskId: 'stall-taco',
+      'stall-721839': {
+        kioskId: 'stall-721839',
         kioskName: 'Taco Del Sol',
         items: [
           { menuItemId: 'taco-1', name: 'Birria Beef Tacos (3x)', price: 12.99, quantity: 1 },
@@ -243,8 +319,8 @@ export const initialOrders: Record<string, Order[]> = {
         subtotal: 20.98,
         status: 'completed'
       },
-      'stall-sweet': {
-        kioskId: 'stall-sweet',
+      'stall-902847': {
+        kioskId: 'stall-902847',
         kioskName: 'Sweet Retreat',
         items: [
           { menuItemId: 'sweet-2', name: 'Classic Brown Sugar Boba', price: 6.50, quantity: 2 }
@@ -263,10 +339,10 @@ export const initialOrders: Record<string, Order[]> = {
     customerName: DEFAULT_CUSTOMER_NAME,
     stand: 'Section 220',
     seatNumber: 'Row A, Seat 3',
-    kioskIds: ['stall-wok'],
+    kioskIds: ['stall-384729'],
     kioskOrders: {
-      'stall-wok': {
-        kioskId: 'stall-wok',
+      'stall-384729': {
+        kioskId: 'stall-384729',
         kioskName: 'Wok & Roll',
         items: [
           { menuItemId: 'wok-1', name: 'Classic Pad Thai Noodle', price: 11.99, quantity: 1 },

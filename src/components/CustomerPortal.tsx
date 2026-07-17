@@ -114,14 +114,15 @@ const getMatchingItems = (text: string, items: MenuItem[]): MenuItem[] => {
   const matchSweet = t.includes('sweet') || t.includes('waffle') || t.includes('gelato') || t.includes('ice') || t.includes('helado') || t.includes('sorvete') || t.includes('glace') || t.includes('bubble') || t.includes('shake') || t.includes('doce') || t.includes('dessert') || t.includes('postre') || t.includes('dolce');
 
   return items.filter(item => {
-    const itemStallId = item.stallId;
-    if (matchTaco && itemStallId === 'stall-taco') return true;
-    if (matchBurger && itemStallId === 'stall-burger') return true;
-    if (matchWok && itemStallId === 'stall-wok') return true;
-    if (matchSweet && itemStallId === 'stall-sweet') return true;
+    const stallNameLower = item.stallName.toLowerCase();
+    const categoryLower = item.category.toLowerCase();
+    if (matchTaco && (stallNameLower.includes('taco') || categoryLower.includes('mexican'))) return true;
+    if (matchBurger && (stallNameLower.includes('burger') || categoryLower.includes('burger') || categoryLower.includes('fries'))) return true;
+    if (matchWok && (stallNameLower.includes('wok') || stallNameLower.includes('roll') || categoryLower.includes('noodle') || categoryLower.includes('rice') || categoryLower.includes('asian'))) return true;
+    if (matchSweet && (stallNameLower.includes('sweet') || stallNameLower.includes('retreat') || categoryLower.includes('dessert') || categoryLower.includes('beverage') || categoryLower.includes('waffle'))) return true;
     
     return item.name.toLowerCase().includes(t) || 
-           item.category.toLowerCase().includes(t) || 
+           categoryLower.includes(t) || 
            item.description.toLowerCase().includes(t);
   });
 };
@@ -164,6 +165,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [wallet, setWallet] = useState<UserWallet>({ uid: '', balance: 0, transactions: [] });
   const [activeOrders, setActiveOrders] = useState<KioskOrderView[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeTab, setActiveTab] = useState<'browse' | 'orders'>('browse');
 
   // Delivery & Match states
   const [matches, setMatches] = useState<Match[]>([]);
@@ -226,6 +229,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       setMenuItems(fetchedItems);
       setWallet(fetchedWallet);
       setMatches(fetchedMatches);
+      setOrders(myOrders);
 
       // An order can span multiple kiosks; flatten to one card per kiosk slice.
       const kioskViews: KioskOrderView[] = myOrders.flatMap(o =>
@@ -503,7 +507,8 @@ Rules:
 2. Recommend matching items. Suggest 1 to 4 items.
 3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?"
 4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" and you MUST append [SHOW_CHECKOUT] at the very end of your response.
-5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.`;
+5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.
+6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added.`;
 
     const contents = [];
     const recentHistory = history.slice(-6);
@@ -574,6 +579,23 @@ Rules:
         if (rawResponse.includes('[SHOW_CHECKOUT]')) {
           shouldShowCheckout = true;
           parsedText = parsedText.replace('[SHOW_CHECKOUT]', '').trim();
+        }
+
+        // Parse [ADD_TO_CART: [{"id": "item_id", "quantity": N}]] tags
+        const cartTagMatch = rawResponse.match(/\[ADD_TO_CART:\s*(\[[^\]]*\])\]/);
+        if (cartTagMatch) {
+          try {
+            const additions: { id: string; quantity: number }[] = JSON.parse(cartTagMatch[1]);
+            additions.forEach(add => {
+              const item = filteredMenuItems.find(i => i.id === add.id);
+              if (item) {
+                addToCart(item, add.quantity);
+              }
+            });
+            parsedText = parsedText.replace(/\[ADD_TO_CART:\s*\[[^\]]*\]\]/, '').trim();
+          } catch (e) {
+            console.error('Error parsing ADD_TO_CART tag:', e);
+          }
         }
 
         // Parse [ITEMS: ["id1", "id2"]] tags
@@ -1173,11 +1195,72 @@ Rules:
         </button>
       </div>
 
+      {/* Tab Navigation */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          gap: '1rem', 
+          borderBottom: '1px solid var(--border-color)', 
+          paddingBottom: '0.75rem', 
+          marginTop: '1.5rem',
+          marginBottom: '1rem' 
+        }}
+      >
+        <button 
+          onClick={() => setActiveTab('browse')}
+          className={`btn ${activeTab === 'browse' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ 
+            padding: '0.6rem 1.25rem', 
+            borderRadius: '10px', 
+            fontWeight: 600, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          🍔 Browse & Order
+        </button>
+        <button 
+          onClick={() => setActiveTab('orders')}
+          className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ 
+            padding: '0.6rem 1.25rem', 
+            borderRadius: '10px', 
+            fontWeight: 600, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          📋 Track Orders
+          {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
+            <span 
+              style={{ 
+                background: 'var(--accent-red)', 
+                color: 'white', 
+                fontSize: '0.7rem', 
+                padding: '0.15rem 0.45rem', 
+                borderRadius: '8px', 
+                fontWeight: 800,
+                boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)'
+              }}
+            >
+              {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Main Grid Content */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
         
-        {/* Left side: browsing & active tracker */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {activeTab === 'browse' ? (
+          /* Left side: browsing & active tracker */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
           {/* Active Orders Status Tracker */}
           {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
@@ -1702,6 +1785,178 @@ Rules:
             )}
           </div>
         </div>
+        ) : (
+          /* Order tracking tab */
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <Clock size={22} color="var(--accent-cyan)" /> Order Tracking Console
+              </h2>
+              <button 
+                onClick={() => setActiveTab('browse')}
+                className="btn btn-secondary"
+                style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', borderRadius: '8px' }}
+              >
+                🍕 Back to Menu
+              </button>
+            </div>
+
+            {orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+                <ShoppingBag size={48} style={{ color: 'var(--text-muted)', opacity: 0.3, marginBottom: '1rem' }} />
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>No orders placed yet</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                  Browse our food kiosks and place your first order to track it here!
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {orders
+                  .slice()
+                  .sort((a, b) => new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime())
+                  .map(order => (
+                    <div 
+                      key={order.id}
+                      className="glass-panel-glow"
+                      style={{ 
+                        padding: '1.5rem', 
+                        border: '1px solid var(--border-color-glow)',
+                        background: 'rgba(3, 7, 18, 0.45)',
+                        borderRadius: '16px'
+                      }}
+                    >
+                      {/* Order Metadata Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>Order ID: #{order.id.split('-')[1] || order.id}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({order.id})</span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                            Placed on {new Date(order.orderTime).toLocaleString()}
+                            {order.stand && order.seatNumber && (
+                              <span style={{ marginLeft: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                                📍 {order.stand}, {order.seatNumber}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grand Total</div>
+                          <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.totalAmount.toFixed(2)}</strong>
+                        </div>
+                      </div>
+
+                      {/* Kiosk breakdown */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {Object.values(order.kioskOrders).map(kioskOrder => {
+                          const logoEmoji = stalls.find(s => s.id === kioskOrder.kioskId)?.logoUrl || '🏪';
+                          return (
+                            <div 
+                              key={kioskOrder.kioskId}
+                              style={{ 
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                padding: '1.25rem',
+                                borderRadius: '12px',
+                                border: '1px solid var(--border-color)'
+                              }}
+                            >
+                              {/* Kiosk Name & Status Badge */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '1.25rem' }}>{logoEmoji}</span>
+                                  <strong style={{ fontSize: '1rem', color: 'white' }}>{kioskOrder.kioskName}</strong>
+                                </div>
+                                <span className={`badge ${
+                                  kioskOrder.status === 'pending' ? 'badge-warning' :
+                                  kioskOrder.status === 'preparing' ? 'badge-info' :
+                                  kioskOrder.status === 'ready' ? 'badge-success' :
+                                  kioskOrder.status === 'completed' ? 'badge-secondary' :
+                                  'badge-danger'
+                                }`} style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
+                                  {kioskOrder.status === 'ready' ? 'Ready for Pickup 🎉' : kioskOrder.status}
+                                </span>
+                              </div>
+
+                              {/* Items from this kiosk */}
+                              <div style={{ paddingLeft: '0.25rem', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>Items Ordered</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                  {kioskOrder.items.map((item, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                                      <div>
+                                        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginRight: '0.5rem' }}>{item.quantity}x</span>
+                                        <span>{item.name}</span>
+                                      </div>
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        status: <strong style={{ 
+                                          color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' :
+                                                 kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' :
+                                                 kioskOrder.status === 'ready' ? 'var(--accent-green)' :
+                                                 kioskOrder.status === 'completed' ? 'var(--text-muted)' :
+                                                 'var(--accent-red)'
+                                        }}>{kioskOrder.status}</strong>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', position: 'relative', marginBottom: '0.5rem' }}>
+                                <div 
+                                  style={{ 
+                                    height: '100%', 
+                                    width: `${
+                                      kioskOrder.status === 'pending' ? 25 :
+                                      kioskOrder.status === 'preparing' ? 60 :
+                                      kioskOrder.status === 'ready' ? 100 :
+                                      kioskOrder.status === 'completed' ? 100 :
+                                      0
+                                    }%`, 
+                                    background: kioskOrder.status === 'ready' || kioskOrder.status === 'completed' ? 'var(--accent-green)' : kioskOrder.status === 'cancelled' ? 'var(--accent-red)' : 'var(--accent-cyan)',
+                                    borderRadius: '3px',
+                                    transition: 'width 0.4s ease'
+                                  }} 
+                                />
+                              </div>
+                              
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                <span style={{ color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' : '' }}>Received (Pending)</span>
+                                <span style={{ color: kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>Preparing (Kitchen)</span>
+                                <span style={{ color: kioskOrder.status === 'ready' ? 'var(--accent-green)' : '' }}>Ready for Pickup</span>
+                              </div>
+
+                              {kioskOrder.status === 'cancelled' && kioskOrder.declineReason && (
+                                <div style={{ 
+                                  marginTop: '0.75rem', 
+                                  padding: '0.5rem 0.75rem', 
+                                  background: 'rgba(239, 68, 68, 0.05)', 
+                                  border: '1px solid rgba(239, 68, 68, 0.1)', 
+                                  borderRadius: '6px', 
+                                  fontSize: '0.75rem', 
+                                  color: '#f87171',
+                                  textAlign: 'left'
+                                }}>
+                                  🚫 <strong>Declined:</strong> {kioskOrder.declineReason}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {order.notes && (
+                        <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          ✍️ <strong>Delivery Notes:</strong> {order.notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
@@ -2074,7 +2329,10 @@ Rules:
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button 
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setActiveTab('orders');
+                }}
                 className="btn btn-primary" 
                 style={{ width: '100%', padding: '0.75rem' }}
               >

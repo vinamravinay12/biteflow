@@ -42,6 +42,10 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   // Filter for orders
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'>('all');
 
+  // Declining comments states
+  const [decliningOrderId, setDecliningOrderId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState<string>('');
+
   // Menu form modal state
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -160,19 +164,22 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   }, [stall.id]);
 
   // Order status actions
-  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus, reason?: string) => {
     const order = orders.find(o => o.orderId === orderId);
     if (!order) return;
 
-    const success = await db.updateKioskOrderStatus(order.customerUid, orderId, stall.id, newStatus);
+    const success = await db.updateKioskOrderStatus(order.customerUid, orderId, stall.id, newStatus, reason);
     if (success) {
       // If we are cancelling, refund only this kiosk's portion of the order —
       // other kiosks in the same order are unaffected.
       if (newStatus === 'cancelled') {
+        const refundNote = reason 
+          ? `Refund: Order #${order.orderId} declined by ${stall.name} (${reason})` 
+          : `Refund: Order #${order.orderId} (${stall.name}) cancelled`;
         await db.refundWalletFunds(
           order.customerUid,
           order.subtotal,
-          `Refund: Order #${order.orderId} (${stall.name}) cancelled`
+          refundNote
         );
       }
       await loadData();
@@ -642,31 +649,107 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                       <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.subtotal.toFixed(2)}</strong>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', width: decliningOrderId === order.orderId ? '100%' : 'auto', justifyContent: 'flex-end' }}>
                       {order.status === 'pending' && (
-                        <>
-                          <button 
-                            onClick={() => handleUpdateStatus(order.orderId, 'cancelled')}
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                          >
-                            <X size={14} /> Cancel & Refund
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateStatus(order.orderId, 'preparing')}
-                            className="btn btn-primary"
-                            style={{ 
-                              padding: '0.5rem 1.25rem', 
-                              fontSize: '0.85rem', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '0.35rem',
-                              background: 'linear-gradient(135deg, var(--accent-orange), #ea580c)'
-                            }}
-                          >
-                            <Check size={14} /> Accept Order
-                          </button>
-                        </>
+                        decliningOrderId === order.orderId ? (
+                          <div style={{
+                            background: 'rgba(239, 68, 68, 0.05)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '12px',
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem',
+                            width: '100%',
+                            maxWidth: '400px'
+                          }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-red)', display: 'block', textAlign: 'left' }}>
+                              Select Reason for Declining Order:
+                            </span>
+                            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              {['Finished / Out of Stock', 'Not Available', 'Kiosk Too Busy', 'Technical Issues'].map(reason => (
+                                <button
+                                  key={reason}
+                                  type="button"
+                                  onClick={() => setDeclineReason(reason)}
+                                  className="btn"
+                                  style={{
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    borderRadius: '6px',
+                                    background: declineReason === reason ? 'var(--accent-red)' : 'rgba(255,255,255,0.05)',
+                                    color: declineReason === reason ? 'white' : 'var(--text-secondary)',
+                                    border: '1px solid ' + (declineReason === reason ? 'var(--accent-red)' : 'var(--border-color)'),
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {reason}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="Or type custom reason..."
+                              value={declineReason}
+                              onChange={(e) => setDeclineReason(e.target.value)}
+                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', background: 'rgba(3,7,18,0.5)' }}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDecliningOrderId(null);
+                                  setDeclineReason('');
+                                }}
+                                className="btn btn-secondary"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const finalReason = declineReason.trim() || 'Not Available';
+                                  await handleUpdateStatus(order.orderId, 'cancelled', finalReason);
+                                  setDecliningOrderId(null);
+                                  setDeclineReason('');
+                                }}
+                                className="btn btn-primary"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px', background: 'var(--accent-red)' }}
+                              >
+                                Confirm Decline
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button 
+                              onClick={() => {
+                                setDecliningOrderId(order.orderId);
+                                setDeclineReason('');
+                              }}
+                              className="btn btn-secondary" 
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                              <X size={14} /> Decline & Refund
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateStatus(order.orderId, 'preparing')}
+                              className="btn btn-primary"
+                              style={{ 
+                                padding: '0.5rem 1.25rem', 
+                                fontSize: '0.85rem', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.35rem',
+                                background: 'linear-gradient(135deg, var(--accent-orange), #ea580c)'
+                              }}
+                            >
+                              <Check size={14} /> Accept Order
+                            </button>
+                          </>
+                        )
                       )}
 
                       {order.status === 'preparing' && (

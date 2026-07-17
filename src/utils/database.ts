@@ -7,15 +7,15 @@ import { encryptText, decryptText } from './crypto';
 import { db as firestoreDb } from './firebase';
 import {
   collection, collectionGroup, doc, getDoc, getDocs, setDoc,
-  updateDoc, deleteDoc, query, orderBy, where
+  updateDoc, deleteDoc, query, orderBy
 } from 'firebase/firestore';
 
 // Firestore layout:
-//   users/{uid}                                    -- admin + customer profiles
-//   users/{ADMIN_UID}/stalls/{stallId}              -- the single admin owns every stall
-//   users/{ADMIN_UID}/stalls/{stallId}/menu_items/{itemId}
-//   users/{customerUid}/orders/{orderId}
-//   users/{customerUid}/wallet/main
+//   users/{uid}                                    -- admin, foodkiosk, and customer profiles
+//   users/{ADMIN_UID}/stalls/{stallId}              -- the single admin owns every stall configuration
+//   users/{kioskUid}/menu_items/{itemId}           -- kiosk user contains menu_items subcollection
+//   users/{customerUid}/orders/{orderId}           -- customer user contains orders subcollection
+//   users/{customerUid}/wallet/main                -- customer user contains wallet main document
 //   matches/{matchId}                               -- top-level, referenced by admin + customers
 
 const STALLS_KEY = 'foodcourt_stalls';
@@ -32,8 +32,8 @@ const walletKey = (uid: string) => `${WALLET_KEY_PREFIX}${uid}`;
 
 const stallsColRef = () => collection(firestoreDb!, 'users', ADMIN_UID, 'stalls');
 const stallDocRef = (stallId: string) => doc(firestoreDb!, 'users', ADMIN_UID, 'stalls', stallId);
-const menuItemsColRef = (stallId: string) => collection(firestoreDb!, 'users', ADMIN_UID, 'stalls', stallId, 'menu_items');
-const menuItemDocRef = (stallId: string, itemId: string) => doc(firestoreDb!, 'users', ADMIN_UID, 'stalls', stallId, 'menu_items', itemId);
+const menuItemsColRef = (stallId: string) => collection(firestoreDb!, 'users', stallId, 'menu_items');
+const menuItemDocRef = (stallId: string, itemId: string) => doc(firestoreDb!, 'users', stallId, 'menu_items', itemId);
 const userOrdersRef = (uid: string) => collection(firestoreDb!, 'users', uid, 'orders');
 const orderDocRef = (uid: string, orderId: string) => doc(firestoreDb!, 'users', uid, 'orders', orderId);
 const walletDocRef = (uid: string) => doc(firestoreDb!, 'users', uid, 'wallet', 'main');
@@ -87,16 +87,50 @@ export const db = {
           await setDoc(userDocRef(ADMIN_UID), adminProfile);
         }
 
-        const stallsSnap = await getDocs(stallsColRef());
-        if (stallsSnap.empty) {
-          console.log("Seeding default stalls + menu items into Firestore...");
-          for (const s of initialStalls) {
+        // Seed default stalls + menu items individually if they don't exist in Firestore
+        for (const s of initialStalls) {
+          const ref = stallDocRef(s.id);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) {
+            console.log(`Seeding missing stall: ${s.name}...`);
             const stall = await seedStallToStall(s);
-            await setDoc(stallDocRef(stall.id), stall);
+            await setDoc(ref, stall);
           }
-          for (const item of initialMenuItems) {
-            await setDoc(menuItemDocRef(item.stallId, item.id), item);
+        }
+        for (const item of initialMenuItems) {
+          const ref = menuItemDocRef(item.stallId, item.id);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) {
+            await setDoc(ref, item);
           }
+        }
+
+        // Post-seeding: Ensure all registered stalls have a kiosk user profile in Firestore
+        const currentStalls = await db.getStalls();
+        for (const stall of currentStalls) {
+          await db.ensureUserProfile(stall.id, 'foodkiosk', `${stall.ownerUsername}@biteflow.app`, stall.name);
+        }
+
+        // Migration: Copy pre-existing orders into their respective kiosk subcollections
+        try {
+          console.log("Checking for pre-existing orders to migrate to kiosk subcollections...");
+          const allOrdersSnap = await getDocs(collectionGroup(firestoreDb, 'orders'));
+          for (const orderDoc of allOrdersSnap.docs) {
+            const order = orderDoc.data() as Order;
+            if (order.id && order.kioskIds && order.customerUid) {
+              // Ensure we write this order to all kiosks listed in order.kioskIds
+              for (const kId of order.kioskIds) {
+                const kioskOrderRef = doc(firestoreDb, 'users', kId, 'orders', order.id);
+                const kioskOrderSnap = await getDoc(kioskOrderRef);
+                if (!kioskOrderSnap.exists()) {
+                  console.log(`Migrating order ${order.id} to kiosk ${kId}...`);
+                  await setDoc(kioskOrderRef, order);
+                }
+              }
+            }
+          }
+        } catch (migErr) {
+          console.error("Migration of pre-existing orders failed:", migErr);
         }
 
         const matchesSnap = await getDocs(collection(firestoreDb, 'matches'));
@@ -132,7 +166,7 @@ export const db = {
     try {
       const ref = userDocRef(uid);
       const snap = await getDoc(ref);
-      if (!snap.exists()) {
+      if (!snap.exists() || (snap.data() as AppUser).role !== role) {
         const profile: AppUser = { uid, email, displayName, role, createdAt: new Date().toISOString() };
         await setDoc(ref, profile);
       }
@@ -157,7 +191,10 @@ export const db = {
   saveStalls: async (stalls: Stall[]): Promise<void> => {
     if (firestoreDb) {
       try {
-        for (const s of stalls) await setDoc(stallDocRef(s.id), s);
+        for (const s of stalls) {
+          await setDoc(stallDocRef(s.id), s);
+          await db.ensureUserProfile(s.id, 'foodkiosk', `${s.ownerUsername}@biteflow.app`, s.name);
+        }
         return;
       } catch (e) {
         console.error("Firestore saveStalls failed, falling back to LocalStorage:", e);
@@ -170,6 +207,7 @@ export const db = {
     if (firestoreDb) {
       try {
         await setDoc(stallDocRef(stall.id), stall);
+        await db.ensureUserProfile(stall.id, 'foodkiosk', `${stall.ownerUsername}@biteflow.app`, stall.name);
         return;
       } catch (e) {
         console.error("Firestore addStall failed, falling back to LocalStorage:", e);
@@ -192,6 +230,8 @@ export const db = {
     if (firestoreDb) {
       try {
         await setDoc(stallDocRef(stall.id), stall);
+        await db.ensureUserProfile(stall.id, 'foodkiosk', `${stall.ownerUsername}@biteflow.app`, stall.name);
+        await updateDoc(userDocRef(stall.id), { displayName: stall.name, email: `${stall.ownerUsername}@biteflow.app` });
         return;
       } catch (e) {
         console.error("Firestore updateStall failed:", e);
@@ -208,6 +248,7 @@ export const db = {
         const itemsSnap = await getDocs(menuItemsColRef(stallId));
         for (const docSnap of itemsSnap.docs) await deleteDoc(docSnap.ref);
         await deleteDoc(stallDocRef(stallId));
+        await deleteDoc(userDocRef(stallId));
         return;
       } catch (e) {
         console.error("Firestore deleteStall failed:", e);
@@ -347,7 +388,7 @@ export const db = {
   getOrdersForKiosk: async (kioskId: string): Promise<Order[]> => {
     if (firestoreDb) {
       try {
-        const snap = await getDocs(query(collectionGroup(firestoreDb, 'orders'), where('kioskIds', 'array-contains', kioskId)));
+        const snap = await getDocs(collection(firestoreDb, 'users', kioskId, 'orders'));
         return snap.docs.map((d: any) => d.data() as Order);
       } catch (e) {
         console.error("Firestore getOrdersForKiosk failed, falling back to LocalStorage:", e);
@@ -367,7 +408,13 @@ export const db = {
   placeOrder: async (order: Order): Promise<void> => {
     if (firestoreDb) {
       try {
+        // Save under customer orders subcollection
         await setDoc(orderDocRef(order.customerUid, order.id), order);
+        
+        // Save under each involved kiosk's orders subcollection
+        for (const kId of order.kioskIds) {
+          await setDoc(doc(firestoreDb, 'users', kId, 'orders', order.id), order);
+        }
         return;
       } catch (e) {
         console.error("Firestore placeOrder failed, falling back to LocalStorage:", e);
@@ -379,10 +426,20 @@ export const db = {
   },
 
   // Updates just one kiosk's status within an order, leaving other kiosks' entries untouched.
-  updateKioskOrderStatus: async (customerUid: string, orderId: string, kioskId: string, status: OrderStatus): Promise<boolean> => {
+  updateKioskOrderStatus: async (customerUid: string, orderId: string, kioskId: string, status: OrderStatus, declineReason?: string): Promise<boolean> => {
     if (firestoreDb) {
       try {
-        await updateDoc(orderDocRef(customerUid, orderId), { [`kioskOrders.${kioskId}.status`]: status });
+        const updateData: any = {
+          [`kioskOrders.${kioskId}.status`]: status
+        };
+        if (declineReason) {
+          updateData[`kioskOrders.${kioskId}.declineReason`] = declineReason;
+        }
+
+        // Update customer copy
+        await updateDoc(orderDocRef(customerUid, orderId), updateData);
+        // Update kiosk copy
+        await updateDoc(doc(firestoreDb, 'users', kioskId, 'orders', orderId), updateData);
         return true;
       } catch (e) {
         console.error("Firestore updateKioskOrderStatus failed, falling back to LocalStorage:", e);
@@ -392,6 +449,9 @@ export const db = {
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1 && orders[index].kioskOrders[kioskId]) {
       orders[index].kioskOrders[kioskId].status = status;
+      if (declineReason) {
+        orders[index].kioskOrders[kioskId].declineReason = declineReason;
+      }
       localStorage.setItem(ordersKey(customerUid), JSON.stringify(orders));
       return true;
     }
