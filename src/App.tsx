@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { db } from './utils/database';
+import { ensureFirebaseAuth } from './utils/firebase';
 import type { StallSession } from './types';
 import { CustomerPortal } from './components/CustomerPortal';
 import { StallLogin } from './components/StallLogin';
@@ -11,9 +12,15 @@ import './App.css';
 function App() {
   const [activeStall, setActiveStall] = useState<StallSession | null>(null);
 
-  // Initialize DB and load active session on mount
+  // Initialize DB and load active session on mount. In Firebase mode we must
+  // establish an authenticated session first, because the Firestore rules deny
+  // every unauthenticated read/write (including the initial seeding).
   useEffect(() => {
-    db.initialize();
+    (async () => {
+      await ensureFirebaseAuth();
+      await db.initialize();
+    })();
+
     const sessionStall = db.getActiveStall();
     if (sessionStall) {
       setActiveStall(sessionStall);

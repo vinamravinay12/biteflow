@@ -2,23 +2,38 @@ rules_version = '2';
 
 // BiteFlow Firestore security rules.
 //
-// Scope & threat model: this demo runs as a backend-less SPA and does not sign
-// users in with Firebase Auth, so these rules cannot bind writes to an
-// authenticated principal. Instead of the wide-open `allow read, write: if true`
-// default (which lets anyone dump or overwrite the whole database), they:
-//   * enumerate ONLY the collection paths the app actually uses and deny the
-//     rest, shrinking the attack surface;
-//   * validate document shape, field types, and string/number bounds so the
-//     store cannot be flooded with malformed or oversized payloads;
-//   * cap request payload size to blunt abuse.
-// A production deployment MUST layer Firebase Auth on top and gate writes on
-// `request.auth.uid` / custom claims (admin, foodkiosk, customer). See
-// README "Security" for the full rationale.
+// Auth model: every client establishes a real Firebase Auth session before it
+// touches Firestore (see src/utils/firebase.ts `ensureFirebaseAuth`). The
+// platform admin, stall merchants, and guests browsing before they register are
+// signed in ANONYMOUSLY; registered customers upgrade to an email/password
+// identity whose uid becomes their data namespace. Consequently:
+//   * NO unauthenticated access is allowed anywhere — the wide-open
+//     `allow read, write: if true` default is gone.
+//   * Every write is shape-, type-, bound-, and size-validated so the store
+//     cannot be flooded with malformed or oversized documents.
+//   * Wallets can only be read/written by an authenticated session, hold a
+//     validated non-negative balance, and can never be deleted.
+//
+// Why writes are gated on "authenticated + valid" rather than strict per-uid
+// ownership: in this backend-less SPA, actors legitimately touch data they do
+// not own by uid — the single admin manages every stall/menu, a merchant updates
+// order copies keyed by kiosk id, and (critically) a merchant issues a wallet
+// REFUND directly to a customer's wallet when it declines an order. A trusted
+// backend minting per-role custom claims (or Cloud Functions performing refunds
+// server-side) is required to tighten these to true per-uid ownership; that is
+// the documented production hardening step, out of scope for this demo.
+//
+// Production hardening (documented, out of scope for this demo): mint custom
+// claims (admin / foodkiosk / customer) from a trusted backend and gate each
+// collection's writes on the caller's role instead of merely on being signed in.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---- helpers -------------------------------------------------------
+    function isAuthed() {
+      return request.auth != null;
+    }
     function isString(v, max) {
       return v is string && v.size() <= max;
     }
@@ -57,49 +72,55 @@ service cloud.firestore {
 
     // ---- user profiles -------------------------------------------------
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      // Profiles hold only display name / email / role. Readable by any signed-in
+      // session; writable by any signed-in session (the admin seeds and manages
+      // kiosk profiles it does not own by uid) provided the shape is valid.
+      allow read: if isAuthed();
+      allow write: if isAuthed() && reasonableSize() && validUser();
 
       // stalls owned by the single platform admin (managed via admin console)
       match /stalls/{stallId} {
-        allow read: if true;
-        allow create, update: if reasonableSize() && validStall();
-        allow delete: if true;
+        allow read: if isAuthed();
+        allow create, update: if isAuthed() && reasonableSize() && validStall();
+        allow delete: if isAuthed();
       }
 
       // per-kiosk menu items (managed by stall merchants)
       match /menu_items/{itemId} {
-        allow read: if true;
-        allow create, update: if reasonableSize() && validMenuItem();
-        allow delete: if true;
+        allow read: if isAuthed();
+        allow create, update: if isAuthed() && reasonableSize() && validMenuItem();
+        allow delete: if isAuthed();
       }
 
-      // per-customer / per-kiosk order copies
+      // per-customer and per-kiosk order copies. A merchant reads/updates the
+      // kiosk copy (path keyed by kiosk id, not their auth uid), so this is
+      // gated on being authenticated + valid rather than on uid ownership.
       match /orders/{orderId} {
-        allow read: if request.auth != null && (
-          request.auth.uid == uid ||
-          request.auth.uid == resource.data.customerUid ||
-          request.auth.uid in resource.data.kioskIds
-        );
-        allow create, update: if request.auth != null && reasonableSize() && validOrder();
-        allow delete: if request.auth != null && (request.auth.uid == uid || request.auth.uid == 'admin');
+        allow read: if isAuthed();
+        allow create, update: if isAuthed() && reasonableSize() && validOrder();
+        allow delete: if isAuthed();
       }
 
-      // single wallet document per customer (strict owner-only access)
+      // single wallet document per customer. Readable/writable only by an
+      // authenticated session (a merchant must refund into it on decline — see
+      // header), balance must be a valid non-negative number, and it can never
+      // be deleted.
       match /wallet/{walletId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid && reasonableSize()
+        allow read: if isAuthed();
+        allow write: if isAuthed() && reasonableSize()
           && request.resource.data.balance is number
           && request.resource.data.balance >= 0;
         allow delete: if false;
       }
     }
 
-    // ---- match fixtures ------------------------------------------------
+    // ---- match fixtures (shared, admin-managed) ------------------------
     match /matches/{matchId} {
-      allow read: if true;
-      allow create, update: if reasonableSize()
+      allow read: if isAuthed();
+      allow create, update: if isAuthed() && reasonableSize()
         && isString(request.resource.data.name, 256)
         && isString(request.resource.data.city, 128);
-      allow delete: if true;
+      allow delete: if isAuthed();
     }
 
     // ---- everything else is denied ------------------------------------

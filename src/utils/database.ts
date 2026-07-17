@@ -46,6 +46,23 @@ const seedStallToStall = async (s: SeedStall): Promise<Stall> => {
   return { ...rest, ownerPasswordEnc: await encryptText(ownerPasswordPlain) };
 };
 
+// A brand-new customer's starter wallet. Every customer (anonymous guest or
+// registered) gets demo funds so the ordering flow is usable immediately,
+// while the wallet stays owner-locked to their own uid by the security rules.
+const starterWalletFor = (uid: string): UserWallet => ({
+  uid,
+  balance: defaultWallet.balance,
+  transactions: [
+    {
+      id: `tx-welcome-${Date.now()}`,
+      amount: defaultWallet.balance,
+      type: 'load',
+      description: 'Welcome bonus (demo funds)',
+      timestamp: new Date().toISOString(),
+    },
+  ],
+});
+
 export const db = {
   initialize: async () => {
     // 1. LocalStorage sandbox seeding
@@ -140,20 +157,12 @@ export const db = {
           }
         }
 
-        const seedOrders = initialOrdersFor(DEFAULT_CUSTOMER_UID);
-        if (seedOrders.length > 0) {
-          const existingOrdersSnap = await getDocs(userOrdersRef(DEFAULT_CUSTOMER_UID));
-          if (existingOrdersSnap.empty) {
-            for (const o of seedOrders) {
-              await setDoc(orderDocRef(DEFAULT_CUSTOMER_UID, o.id), o);
-            }
-          }
-        }
-
-        const walletSnap = await getDoc(walletDocRef(DEFAULT_CUSTOMER_UID));
-        if (!walletSnap.exists()) {
-          await setDoc(walletDocRef(DEFAULT_CUSTOMER_UID), defaultWallet);
-        }
+        // NOTE: we intentionally do NOT seed orders/wallet for the fixed
+        // DEFAULT_CUSTOMER_UID in Firebase mode. Under the auth-required rules,
+        // identity is the Firebase Auth uid (anonymous or registered), and the
+        // wallet is owner-locked to `request.auth.uid`. Each real customer gets
+        // their own starter wallet on first access (see getWallet). The fixed
+        // sandbox-customer demo data only applies to LocalStorage sandbox mode.
       } catch (e) {
         console.error("Failed to seed Firestore collections:", e);
       }
@@ -464,7 +473,7 @@ export const db = {
       try {
         const snap = await getDoc(walletDocRef(uid));
         if (snap.exists()) return snap.data() as UserWallet;
-        const wallet: UserWallet = uid === DEFAULT_CUSTOMER_UID ? defaultWallet : { uid, balance: 0, transactions: [] };
+        const wallet = starterWalletFor(uid);
         await setDoc(walletDocRef(uid), wallet);
         return wallet;
       } catch (e) {

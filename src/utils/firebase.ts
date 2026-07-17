@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, Firestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 export const isFirebaseConfigured =
   !!import.meta.env.VITE_FIREBASE_PROJECT_ID &&
@@ -35,3 +35,35 @@ if (isFirebaseConfigured) {
 }
 
 export { dbInstance as db, authInstance as auth };
+
+// Every Firestore access in this app now requires an authenticated Firebase
+// session (the security rules enforce `request.auth != null`). Roles that don't
+// use email/password — the platform admin, stall merchants, and guest shoppers
+// browsing before they register — are signed in ANONYMOUSLY so they still have a
+// real, non-null `request.auth` principal. Registered customers later upgrade to
+// an email/password identity. This resolves once a user (anonymous or not) is
+// established, and is safe to await before any read/write or seeding.
+let authReadyPromise: Promise<void> | null = null;
+
+export const ensureFirebaseAuth = (): Promise<void> => {
+  if (!authInstance) return Promise.resolve(); // LocalStorage sandbox mode
+  if (authReadyPromise) return authReadyPromise;
+
+  authReadyPromise = new Promise<void>((resolve) => {
+    const unsubscribe = onAuthStateChanged(authInstance!, (user) => {
+      if (user) {
+        unsubscribe();
+        resolve();
+      } else {
+        // No session yet — establish the anonymous baseline. onAuthStateChanged
+        // will fire again with the new user and resolve above.
+        signInAnonymously(authInstance!).catch((e) => {
+          console.error('Anonymous Firebase sign-in failed:', e);
+          unsubscribe();
+          resolve(); // don't hang the app; reads/writes will simply be denied
+        });
+      }
+    });
+  });
+  return authReadyPromise;
+};
