@@ -117,32 +117,6 @@ const TRANSLATIONS = {
   }
 };
 
-const detectLanguage = (text: string): LanguageCode => {
-  const t = text.toLowerCase();
-  if (/[\u0600-\u06FF]/.test(text)) {
-    return 'ar';
-  }
-  if (t.includes('quiero') || t.includes('pedir') || t.includes('hamburguesa') || t.includes('hola') || t.includes('comida') || t.includes('tacos') || t.includes('por favor') || t.includes('gracias') || t.includes('que tal')) {
-    return 'es';
-  }
-  if (t.includes('olá') || t.includes('gostaria') || t.includes('hambúrguer') || t.includes('doce') || t.includes('obrigado') || t.includes('cardápio')) {
-    return 'pt';
-  }
-  if (t.includes('bonjour') || t.includes('veux') || t.includes('commander') || t.includes('s\'il vous plaît') || t.includes('nouilles') || t.includes('dessert') || t.includes('merci')) {
-    return 'fr';
-  }
-  if (t.includes('ciao') || t.includes('vorrei') || t.includes('ordinare') || t.includes('per favore') || t.includes('dolce') || t.includes('grazie')) {
-    return 'it';
-  }
-  if (t.includes('graag') || t.includes('alstublieft') || t.includes('dank u') || t.includes('eten') || t.includes('kaart')) {
-    return 'nl';
-  }
-  if (t.includes('hallo') || t.includes('bitte') || t.includes('möchte') || t.includes('bestellen') || t.includes('danke') || t.includes('karte')) {
-    return 'de';
-  }
-  return 'en';
-};
-
 const getMatchingItems = (text: string, items: MenuItem[]): MenuItem[] => {
   const t = text.toLowerCase();
   const matchTaco = t.includes('taco') || t.includes('quesadilla') || t.includes('guacamole') || t.includes('mexic') || t.includes('burrito');
@@ -524,8 +498,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     }
 
     // Fallback for non-Gemini mode
-    const lastMsg = chatMessages[chatMessages.length - 1];
-    const lang = lastMsg ? detectLanguage(lastMsg.text) : 'en';
+    const lang = language;
     
     setTimeout(() => {
       const confirmText = TRANSLATIONS[lang].confirmed(1, item.name);
@@ -559,12 +532,12 @@ The active kiosks and their menu items are:
 ${JSON.stringify(activeMenuInfo)}
 
 Rules:
-1. You MUST write all your responses, greetings, questions, recommendations, and item addition confirmations in the user's selected language: "${currentLang}". Under NO circumstances should you reply in English unless "${currentLang}" is "en". Translate all parts of your reply into "${currentLang}".
+1. You MUST write all your responses, greetings, questions, recommendations, and item addition confirmations in the user's selected language: "${currentLang}", UNLESS the user starts speaking to you in a different language (e.g. if they speak to you in Hindi/Hinglish, you MUST reply in Hindi/Hinglish). Under no circumstances should you reply in English unless "${currentLang}" is "en" or the user speaks to you in English/Hinglish.
 2. Recommend matching items. Suggest 1 to 4 items.
-3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?" (translated into "${currentLang}").
-4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" (translated into "${currentLang}") and you MUST append [SHOW_CHECKOUT] at the very end of your response.
+3. Once an item is selected/added, ask the user: "Is this enough or would you like to order more?" (translated into the current conversation language).
+4. If the user indicates they are done, finished, or want to pay/checkout, reply asking "Should I proceed with the payment?" (translated into the current conversation language) and you MUST append [SHOW_CHECKOUT] at the very end of your response.
 5. For suggesting items, you MUST append [ITEMS: ["id1", "id2"]] at the very end of your response.
-6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added (translated into "${currentLang}").`;
+6. If the user explicitly lists items they want to add to their cart, order, or buy, you MUST automatically add them to their cart by appending [ADD_TO_CART: [{"id": "item_id", "quantity": count}]] at the very end of your response. If they didn't specify quantity, assume 1. Always confirm to the user which items you have added (translated into the current conversation language).`;
 
     const contents = [];
     const recentHistory = history.slice(-6);
@@ -626,7 +599,7 @@ Rules:
     // Check if we can use the live Gemini API
     if (geminiApiKey.trim()) {
       try {
-        const rawResponse = await callGeminiAPI(text, updatedHistory, geminiApiKey, language);
+        const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey, language);
         
         let parsedText = rawResponse;
         let attachedItems: MenuItem[] = [];
@@ -688,7 +661,7 @@ Rules:
 
     // Local Fallback simulation
     setTimeout(() => {
-      const lang = detectLanguage(text);
+      const lang = language;
       let aiResponseText = '';
       let suggestedItems: MenuItem[] = [];
       let nextPendingConfirmation = null;
