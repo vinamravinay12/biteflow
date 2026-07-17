@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { Stall, Match } from '../types';
 import { FIFA_CITIES } from '../data/mockData';
-import { encryptText } from '../utils/crypto';
+import { encryptText, verifyHash, timingSafeEqual } from '../utils/crypto';
+import { ADMIN_USERNAME, ADMIN_PASSWORD_HASH } from '../utils/constants';
+import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import { ADMIN_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
 import { 
   Store, Plus, Lock, Key, Eye, EyeOff, Trash2, 
@@ -12,6 +14,7 @@ import {
 
 export const SuperAdminPortal: React.FC = () => {
   const [language, setLanguage] = useState<KioskLanguageCode>('en');
+  useDocumentLanguage(language);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(
     localStorage.getItem('biteflow_super_admin_logged_in') === 'true'
   );
@@ -19,17 +22,33 @@ export const SuperAdminPortal: React.FC = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminLoginError('');
 
-    if (adminUsername.trim().toLowerCase() === 'admin' && adminPassword.trim() === 'biteflow-admin-2026') {
-      localStorage.setItem('biteflow_super_admin_logged_in', 'true');
-      setIsAdminLoggedIn(true);
-      setAdminUsername('');
-      setAdminPassword('');
-    } else {
+    if (!ADMIN_PASSWORD_HASH) {
+      // Fail closed: without a configured password digest there is no way to
+      // authenticate, so never fall back to an implicit/hardcoded credential.
       setAdminLoginError(ADMIN_TRANSLATIONS[language].invalidCredentials);
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      const usernameOk = timingSafeEqual(adminUsername.trim().toLowerCase(), ADMIN_USERNAME);
+      const passwordOk = await verifyHash(adminPassword.trim(), ADMIN_PASSWORD_HASH);
+      if (usernameOk && passwordOk) {
+        localStorage.setItem('biteflow_super_admin_logged_in', 'true');
+        setIsAdminLoggedIn(true);
+        setAdminUsername('');
+        setAdminPassword('');
+      } else {
+        setAdminLoginError(ADMIN_TRANSLATIONS[language].invalidCredentials);
+      }
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -357,6 +376,7 @@ export const SuperAdminPortal: React.FC = () => {
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
+                aria-label="Select language"
                 onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
                 style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
               >
@@ -411,21 +431,10 @@ export const SuperAdminPortal: React.FC = () => {
               )}
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)' }}>
-              {ADMIN_TRANSLATIONS[language].loginButton}
+            <button type="submit" disabled={isAuthenticating} className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)', opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'progress' : 'pointer' }}>
+              {isAuthenticating ? ADMIN_TRANSLATIONS[language].authenticating : ADMIN_TRANSLATIONS[language].loginButton}
             </button>
           </form>
-
-          <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sandbox Credentials</span>
-            <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-          </div>
-
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <div><span style={{ color: 'var(--text-muted)' }}>Username:</span> <code style={{ color: '#a78bfa', fontWeight: 600 }}>admin</code></div>
-            <div><span style={{ color: 'var(--text-muted)' }}>Password:</span> <code style={{ color: 'var(--text-primary)' }}>biteflow-admin-2026</code></div>
-          </div>
         </div>
       </div>
     );
@@ -464,6 +473,7 @@ export const SuperAdminPortal: React.FC = () => {
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
+              aria-label="Select language"
               onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
             >

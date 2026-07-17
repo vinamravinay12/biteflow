@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { StallSession, MenuItem, OrderStatus, OrderLineItem, DashboardStats } from '../types';
 import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
+import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import {
   Store, Plus, Trash2, Edit, Check, X, Clock,
   TrendingUp, DollarSign, ShoppingBag, LogOut,
@@ -86,6 +87,7 @@ const DASHBOARD_LOCALES = {
 export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'analytics'>('orders');
   const [language, setLanguage] = useState<KioskLanguageCode>('en');
+  useDocumentLanguage(language);
   const [orders, setOrders] = useState<KioskOrderView[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -462,6 +464,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
+              aria-label="Select language"
               onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -476,8 +479,8 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
           <button onClick={() => setIsPassModalOpen(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Lock size={15} /> {KIOSK_TRANSLATIONS[language].changePassButton}
           </button>
-          <button onClick={loadData} className="btn btn-secondary" title="Refresh data">
-            <RefreshCw size={18} />
+          <button onClick={loadData} className="btn btn-secondary" title="Refresh data" aria-label="Refresh data">
+            <RefreshCw size={18} aria-hidden="true" />
           </button>
           <button onClick={onLogout} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogOut size={16} /> {KIOSK_TRANSLATIONS[language].logout}
@@ -976,21 +979,23 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                         </label>
 
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button 
-                            onClick={() => openMenuModal(item)} 
-                            className="btn btn-secondary" 
+                          <button
+                            onClick={() => openMenuModal(item)}
+                            className="btn btn-secondary"
                             style={{ padding: '0.4rem', borderRadius: '6px' }}
                             title="Edit Item"
+                            aria-label={`Edit ${item.name}`}
                           >
-                            <Edit size={14} />
+                            <Edit size={14} aria-hidden="true" />
                           </button>
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)} 
-                            className="btn btn-secondary" 
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="btn btn-secondary"
                             style={{ padding: '0.4rem', borderRadius: '6px', color: 'var(--accent-red)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
                             title="Delete Item"
+                            aria-label={`Delete ${item.name}`}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -1175,8 +1180,9 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
                 {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
               </h3>
-              <button 
-                onClick={() => setIsMenuModalOpen(false)} 
+              <button
+                onClick={() => setIsMenuModalOpen(false)}
+                aria-label="Close"
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} />
@@ -1511,8 +1517,9 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Lock size={18} color="var(--accent-cyan)" /> Change Stall Password
               </h3>
-              <button 
-                onClick={() => setIsPassModalOpen(false)} 
+              <button
+                onClick={() => setIsPassModalOpen(false)}
+                aria-label="Close"
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} />

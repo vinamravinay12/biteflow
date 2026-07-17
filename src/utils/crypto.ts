@@ -40,3 +40,30 @@ export const decryptText = async (encoded: string): Promise<string> => {
   const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
   return new TextDecoder().decode(plainBuf);
 };
+
+// One-way SHA-256 hash (lowercase hex). Used for the admin login check so the
+// admin password is never stored in plaintext in source, the bundle, or .env —
+// only its irreversible digest is. Verify with `verifyHash` below.
+export const sha256Hex = async (input: string): Promise<string> => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+// Length-constant string comparison to avoid leaking match progress via timing.
+export const timingSafeEqual = (a: string, b: string): boolean => {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+};
+
+// Hashes `candidate` and compares it (timing-safely) against a stored hex digest.
+export const verifyHash = async (candidate: string, expectedHex: string): Promise<boolean> => {
+  if (!expectedHex) return false;
+  const actual = await sha256Hex(candidate);
+  return timingSafeEqual(actual, expectedHex.trim().toLowerCase());
+};

@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "hash:password": "node scripts/hash-password.mjs"
   },
   "dependencies": {
     "firebase": "^10.8.0",
@@ -23,6 +25,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^6.4.3",

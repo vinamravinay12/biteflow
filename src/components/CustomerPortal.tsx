@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, KioskOrderEntry, UserWallet, Match } from '../types';
+import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, UserWallet, Match } from '../types';
 import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils/translations';
+import { parseAiResponse, getMatchingItems } from '../utils/aiActions';
+import { computeCartTotal, groupCartByKiosk } from '../utils/cart';
+import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import {
   Search, ShoppingBag, Wallet, Plus, Minus, Trash2, Clock,
   History, Sparkles, ChevronRight, Info, CheckCircle, X,
@@ -117,27 +120,6 @@ const TRANSLATIONS = {
   }
 };
 
-const getMatchingItems = (text: string, items: MenuItem[]): MenuItem[] => {
-  const t = text.toLowerCase();
-  const matchTaco = t.includes('taco') || t.includes('quesadilla') || t.includes('guacamole') || t.includes('mexic') || t.includes('burrito');
-  const matchBurger = t.includes('burger') || t.includes('hamburg') || t.includes('fries') || t.includes('papas') || t.includes('frites') || t.includes('patatine');
-  const matchWok = t.includes('wok') || t.includes('noodle') || t.includes('fideo') || t.includes('macarr') || t.includes('nouille') || t.includes('spaghett') || t.includes('dumpling') || t.includes('asian');
-  const matchSweet = t.includes('sweet') || t.includes('waffle') || t.includes('gelato') || t.includes('ice') || t.includes('helado') || t.includes('sorvete') || t.includes('glace') || t.includes('bubble') || t.includes('shake') || t.includes('doce') || t.includes('dessert') || t.includes('postre') || t.includes('dolce');
-
-  return items.filter(item => {
-    const stallNameLower = item.stallName.toLowerCase();
-    const categoryLower = item.category.toLowerCase();
-    if (matchTaco && (stallNameLower.includes('taco') || categoryLower.includes('mexican'))) return true;
-    if (matchBurger && (stallNameLower.includes('burger') || categoryLower.includes('burger') || categoryLower.includes('fries'))) return true;
-    if (matchWok && (stallNameLower.includes('wok') || stallNameLower.includes('roll') || categoryLower.includes('noodle') || categoryLower.includes('rice') || categoryLower.includes('asian'))) return true;
-    if (matchSweet && (stallNameLower.includes('sweet') || stallNameLower.includes('retreat') || categoryLower.includes('dessert') || categoryLower.includes('beverage') || categoryLower.includes('waffle'))) return true;
-    
-    return item.name.toLowerCase().includes(t) || 
-           categoryLower.includes(t) || 
-           item.description.toLowerCase().includes(t);
-  });
-};
-
 const CHAT_FLOW_TRANSLATIONS = {
   en: {
     moreQuestion: USER_TRANSLATIONS.en.aiMoreQuestion,
@@ -210,6 +192,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'browse' | 'orders'>('browse');
   const [language, setLanguage] = useState<LanguageCode>('en');
+  useDocumentLanguage(language);
 
   // Delivery & Match states
   const [matches, setMatches] = useState<Match[]>([]);
@@ -630,55 +613,23 @@ Rules:
     if (geminiApiKey.trim()) {
       try {
         const rawResponse = await callGeminiAPI(text, chatMessages, geminiApiKey, language);
-        
-        let parsedText = rawResponse;
-        let attachedItems: MenuItem[] = [];
-        let shouldShowCheckout = false;
-        
-        // Clean up any [SHOW_CHECKOUT] tag
-        if (parsedText.includes('[SHOW_CHECKOUT]')) {
-          shouldShowCheckout = true;
-          parsedText = parsedText.replace(/\[SHOW_CHECKOUT\]/gi, '').trim();
-        }
 
-        // Extract and process [ADD_TO_CART: ...] tag
-        const cartTagMatch = parsedText.match(/\[ADD_TO_CART:\s*(\[[^\]]*\])\]/i);
-        if (cartTagMatch) {
-          try {
-            const additions: { id: string; quantity: number }[] = JSON.parse(cartTagMatch[1]);
-            additions.forEach(add => {
-              const item = filteredMenuItems.find(i => i.id === add.id);
-              if (item) {
-                addToCart(item, add.quantity);
-              }
-            });
-          } catch (e) {
-            console.error('Error parsing ADD_TO_CART tag:', e);
-          }
-        }
-        // Always strip the [ADD_TO_CART: ...] tag from user-facing text
-        parsedText = parsedText.replace(/\[ADD_TO_CART:\s*.*?\]\]/gi, '').trim();
-
-        // Extract and process [ITEMS: ...] tag
-        const itemsTagMatch = parsedText.match(/\[ITEMS:\s*(\[[^\]]*\])\]/i);
-        if (itemsTagMatch) {
-          try {
-            const ids: string[] = JSON.parse(itemsTagMatch[1]);
-            attachedItems = filteredMenuItems.filter(i => ids.includes(i.id));
-          } catch (e) {
-            console.error('Error parsing attached items:', e);
-          }
-        }
-        // Always strip the [ITEMS: ...] tag from user-facing text
-        parsedText = parsedText.replace(/\[ITEMS:\s*.*?\]\]/gi, '').trim();
+        // Parse control tags (ADD_TO_CART / ITEMS / SHOW_CHECKOUT) and strip
+        // them from the visible text. Only additions that resolve to a real,
+        // in-scope menu item are honoured — the model can't inject arbitrary ids.
+        const parsed = parseAiResponse(rawResponse, filteredMenuItems);
+        parsed.cartAdditions.forEach(add => {
+          const item = filteredMenuItems.find(i => i.id === add.id);
+          if (item) addToCart(item, add.quantity);
+        });
 
         const aiMsg: ChatMessage = {
           id: `msg-${Date.now() + 1}`,
           sender: 'ai',
-          text: parsedText,
+          text: parsed.text,
           timestamp: new Date().toISOString(),
-          suggestedItems: attachedItems.length > 0 ? attachedItems : undefined,
-          showCheckoutAction: shouldShowCheckout
+          suggestedItems: parsed.suggestedItems.length > 0 ? parsed.suggestedItems : undefined,
+          showCheckoutAction: parsed.showCheckout
         };
 
         setChatMessages(prev => [...prev, aiMsg]);
@@ -764,7 +715,7 @@ Rules:
     }, 1000);
   };
 
-  const cartTotal = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
+  const cartTotal = computeCartTotal(cart);
 
   // Top Up Wallet
   const handleTopUp = async (amount: number) => {
@@ -803,29 +754,7 @@ Rules:
 
     // Group cart items by kiosk (stall) — one order can span multiple kiosks,
     // each tracking its own fulfillment status independently.
-    const kioskOrders: Record<string, KioskOrderEntry> = {};
-
-    cart.forEach(({ item, quantity }) => {
-      if (!kioskOrders[item.stallId]) {
-        kioskOrders[item.stallId] = {
-          kioskId: item.stallId,
-          kioskName: item.stallName,
-          items: [],
-          subtotal: 0,
-          status: 'pending'
-        };
-      }
-      kioskOrders[item.stallId].items.push({
-        menuItemId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity
-      });
-    });
-
-    Object.values(kioskOrders).forEach(k => {
-      k.subtotal = k.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-    });
+    const kioskOrders = groupCartByKiosk(cart);
 
     const activeMatch = matches.find(m => m.id === selectedMatchId);
 
@@ -909,6 +838,7 @@ Rules:
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
+                aria-label="Select language"
                 onChange={(e) => setLanguage(e.target.value as LanguageCode)}
                 style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
               >
@@ -1032,9 +962,11 @@ Rules:
                 <button
                   type="button"
                   onClick={() => setShowAuthPassword(!showAuthPassword)}
+                  aria-label={showAuthPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showAuthPassword}
                   style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
-                  {showAuthPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showAuthPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                 </button>
               </div>
             </div>
@@ -1057,9 +989,11 @@ Rules:
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showConfirmPassword}
                     style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showConfirmPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
@@ -1116,6 +1050,7 @@ Rules:
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
+                aria-label="Select language"
                 onChange={(e) => setLanguage(e.target.value as LanguageCode)}
                 style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
               >
@@ -1300,6 +1235,7 @@ Rules:
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
+              aria-label="Select language"
               onChange={(e) => setLanguage(e.target.value as LanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -1499,13 +1435,18 @@ Rules:
             {!showVisualMenu ? (
               <>
                 {/* Chat Message Thread */}
-                <div style={{ 
-                  flex: 1, 
-                  maxHeight: '380px', 
-                  overflowY: 'auto', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '1rem', 
+                <div
+                  role="log"
+                  aria-live="polite"
+                  aria-atomic="false"
+                  aria-label={USER_TRANSLATIONS[language].aiConciergeTitle || 'AI Concierge conversation'}
+                  style={{
+                  flex: 1,
+                  maxHeight: '380px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
                   padding: '0.5rem',
                   background: 'rgba(3, 7, 18, 0.2)',
                   borderRadius: '12px',
@@ -1745,16 +1686,18 @@ Rules:
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask BiteFlow AI Concierge..."
+                    aria-label="Ask BiteFlow AI Concierge"
                     className="input-field"
                     style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
                   />
                   <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     Send
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowCart(true)}
-                    style={{ 
+                    aria-label={`${USER_TRANSLATIONS[language].cartTitle || 'Open cart'} (${cart.reduce((s, c) => s + c.quantity, 0)})`}
+                    style={{
                       position: 'relative', 
                       padding: '0.6rem', 
                       borderRadius: '10px', 
@@ -1800,11 +1743,12 @@ Rules:
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     {/* Search Bar */}
                     <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-                      <Search size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                      <Search size={18} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
                       <input
-                        type="text"
+                        type="search"
                         className="input-field"
                         placeholder={USER_TRANSLATIONS[language].searchPlaceholder}
+                        aria-label={USER_TRANSLATIONS[language].searchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{ paddingLeft: '2.5rem' }}
@@ -1815,6 +1759,7 @@ Rules:
                     <div style={{ width: '200px' }}>
                       <select
                         className="input-field"
+                        aria-label="Filter by food stall"
                         value={selectedStallId}
                         onChange={(e) => setSelectedStallId(e.target.value)}
                       >
@@ -2118,10 +2063,13 @@ Rules:
           justifyContent: 'flex-end'
         }}>
           {/* Overlay click to close */}
-          <div onClick={() => setShowCart(false)} style={{ flex: 1 }} />
-          
-          <div 
+          <div onClick={() => setShowCart(false)} aria-hidden="true" style={{ flex: 1 }} />
+
+          <div
             className="glass-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={USER_TRANSLATIONS[language].cartTitle || 'Your cart and wallet'}
             style={{
               width: '100%',
               maxWidth: '440px',
@@ -2141,11 +2089,12 @@ Rules:
               <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ShoppingBag size={18} color="var(--accent-cyan)" /> {language === 'es' ? 'Tu Carrito y Billetera' : language === 'fr' ? 'Votre Panier & Portefeuille' : language === 'de' ? 'Ihr Warenkorb & Wallet' : language === 'it' ? 'Il tuo Carrello e Portafoglio' : language === 'pt' ? 'Seu Carrinho e Carteira' : language === 'nl' ? 'Jouw Winkelwagen & Wallet' : language === 'ar' ? 'حقيبة التسوق والمحفظة' : 'Your Cart & Wallet'}
               </h3>
-              <button 
+              <button
                 onClick={() => setShowCart(false)}
+                aria-label={USER_TRANSLATIONS[language].close || 'Close'}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -2236,26 +2185,29 @@ Rules:
                         
                         {/* Quantity Controls */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <button 
+                          <button
                             onClick={() => updateCartQty(item.id, -1)}
+                            aria-label={`${USER_TRANSLATIONS[language].decreaseQuantity || 'Decrease quantity'}: ${item.name}`}
                             style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                           >
-                            <Minus size={10} />
+                            <Minus size={10} aria-hidden="true" />
                           </button>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600, width: '20px', textAlign: 'center' }}>{quantity}</span>
-                          <button 
+                          <span aria-live="polite" style={{ fontSize: '0.85rem', fontWeight: 600, width: '20px', textAlign: 'center' }}>{quantity}</span>
+                          <button
                             onClick={() => updateCartQty(item.id, 1)}
+                            aria-label={`${USER_TRANSLATIONS[language].increaseQuantity || 'Increase quantity'}: ${item.name}`}
                             style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                           >
-                            <Plus size={10} />
+                            <Plus size={10} aria-hidden="true" />
                           </button>
-                          
-                          <button 
+
+                          <button
                             onClick={() => removeFromCart(item.id)}
                             style={{ marginLeft: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer' }}
+                            aria-label={`${USER_TRANSLATIONS[language].removeItem || 'Remove'}: ${item.name}`}
                             title="Remove"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                       </div>

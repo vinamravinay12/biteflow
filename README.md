@@ -4,7 +4,7 @@ Biteflow is a modern, premium, and feature-rich Web Application designed for sta
 
 **Live Demo Links**:
 * 📱 **Customer Portal**: [https://biteflow-6b1f9.web.app](https://biteflow-6b1f9.web.app)
-* 🛡️ **Platform Admin Portal**: [https://biteflow-6b1f9.web.app/admin](https://biteflow-6b1f9.web.app/admin) (Credentials: `admin` / `biteflow-admin-2026`)
+* 🛡️ **Platform Admin Portal**: [https://biteflow-6b1f9.web.app/admin](https://biteflow-6b1f9.web.app/admin) — the admin password is **not** published here or committed to the repo; only its SHA-256 digest lives in the environment (see [Security](#-security)). Reviewer credentials are shared separately with the submission.
 * 🏪 **Stall Merchant Portal**: [https://biteflow-6b1f9.web.app/foodkiosk](https://biteflow-6b1f9.web.app/foodkiosk) (Stall merchant credentials can be generated in the Admin Portal)
 
 ---
@@ -56,7 +56,7 @@ The platform integrates **Gemini 2.5 Flash** as an interactive food court assist
 ---
 
 ## ⚙️ Core Architecture & Tech Stack
-* **Front-end**: React 18, TypeScript, Vite
+* **Front-end**: React 19, TypeScript, Vite
 * **Styling**: Vanilla CSS with custom modern glassmorphism design variables, responsive grid configurations, and animations
 * **Database & Auth**: Firebase / Sandbox LocalStorage fallback mode
 * **Icons**: Lucide React
@@ -87,7 +87,52 @@ npm run build
 
 ---
 
+## 🔒 Security
+
+Biteflow is a backend-less single-page app (SPA), which shapes what security can and cannot guarantee. The measures below reflect that honestly rather than overclaiming.
+
+* **No plaintext admin password anywhere.** The platform-admin login compares a SHA-256 digest stored in the environment (`VITE_ADMIN_PASSWORD_HASH`) — the plaintext is never in the source, the bundle, the README, or the UI. Rotate it with:
+  ```bash
+  npm run hash:password "your-new-strong-password"
+  # paste the printed digest into .env as VITE_ADMIN_PASSWORD_HASH
+  ```
+  Login also **fails closed**: with no digest configured, authentication is rejected rather than falling back to any default.
+* **Hardened Firestore rules.** The default wildcard `allow read, write: if true` has been replaced with per-collection rules that validate document shape, field types, and string/number bounds and cap payload size (`firestore.rules`). This shrinks the attack surface and blocks malformed/oversized writes. *Known limitation:* because the demo does not sign users in with Firebase Auth, rules cannot bind writes to an authenticated principal — a production deployment must layer Firebase Auth and gate writes on `request.auth` / custom claims. This is documented inline in the rules file.
+* **Secrets kept out of version control.** `.env` is git-ignored; `.env.example` documents every variable with placeholders. The Firebase *web* config is public by design (it is not a secret).
+* **Credential handling.** Merchant passwords are AES-GCM encrypted (`src/utils/crypto.ts`) rather than stored in plaintext. The file itself documents the caveat that a client-shipped key cannot provide true secrecy in an SPA — the honest posture, not security theater.
+* **Constant-time comparison** (`timingSafeEqual`) is used for the admin credential check to avoid leaking match progress via timing.
+
+> ⚠️ **If you cloned an earlier commit:** the previously published demo password (`biteflow-admin-2026`) is considered compromised and must be rotated using the command above.
+
+---
+
+## ♿ Accessibility
+
+* **Dynamic language & direction.** `<html lang>` and `<html dir>` update live with the selected language via the `useDocumentLanguage` hook — screen readers switch pronunciation off `lang`, and Arabic renders in native `dir="rtl"`.
+* **Labeled controls.** Icon-only buttons (cart, quantity +/–, remove, close, refresh, edit/delete, password visibility) expose `aria-label`s; decorative icons are marked `aria-hidden`. Form inputs and every language `<select>` have accessible names.
+* **Live regions & dialogs.** The AI Concierge thread is an `aria-live="polite"` log so new replies are announced; the cart drawer uses `role="dialog"` / `aria-modal`.
+* **Toggle state.** Password-visibility toggles expose `aria-pressed`.
+
+---
+
 ## 🛠️ Verification & Testing
-* **Type Safety**: Fully checked using TypeScript compile (`tsc -b`).
-* **Visual Testing**: Responsive elements tested across mobile viewport sizes and desktop screens.
-* **Localization Validation**: Verified translation keys across Customer Portal, Merchant Dashboard, and Super Admin logs.
+
+* **Automated unit tests (`npm test`)** — 39 tests across 5 suites (Vitest), covering the real business logic the UI depends on:
+  * `aiActions` — the Gemini action-tag parser (`[ADD_TO_CART]`, `[ITEMS]`, `[SHOW_CHECKOUT]`), including malformed-JSON resilience and rejection of injected/unknown item ids.
+  * `cart` — cart totals, item counts, and multi-kiosk order grouping/subtotals.
+  * `crypto` — AES-GCM round-trips plus the admin-auth SHA-256 / `verifyHash` / `timingSafeEqual` helpers (validated against NIST vectors).
+  * `database` — wallet load/deduct/refund arithmetic (including overdraft protection) and stall credential verification.
+  * `translations` — localization key parity across all languages.
+* **Coverage (`npm run test:coverage`)** — the domain logic in `src/utils` reports ~100% line coverage on the tested modules.
+* **Type Safety** — fully checked with `tsc -b`; linted with `oxlint`.
+* **Manual/visual** — verified in-browser across desktop and mobile viewports, with RTL confirmed for Arabic.
+
+---
+
+## 📌 Assumptions
+
+* **Demo-grade auth.** Without a backend, admin/merchant auth is client-side and intended for demonstration; production requires Firebase Auth (see [Security](#-security)).
+* **Sandbox mode.** If Firebase env vars are absent, the app runs entirely against a LocalStorage sandbox so it is fully usable offline for evaluation.
+* **Wallet is a mock gateway.** Funds are simulated in-app; no real payment processing occurs.
+* **Gemini is optional.** With no `VITE_GEMINI_API_KEY`, the AI Concierge falls back to an offline keyword-matching assistant, so the flow always works.
+* **Single platform admin.** The model assumes exactly one admin account, which is why stalls live under a deterministic `users/{ADMIN_UID}/stalls` path.

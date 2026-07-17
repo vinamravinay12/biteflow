@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../utils/database';
 import type { Stall, StallSession } from '../types';
 import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, USER_TRANSLATIONS, type KioskLanguageCode } from '../utils/translations';
+import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 
 interface StallLoginProps {
   onLoginSuccess: (stall: StallSession) => void;
@@ -17,6 +18,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [language, setLanguage] = useState<KioskLanguageCode>('en');
+  useDocumentLanguage(language);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +50,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
             <span style={{ fontSize: '0.8rem' }}>🌐</span>
             <select
               value={language}
+              aria-label="Select language"
               onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
             >

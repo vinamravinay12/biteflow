@@ -1,8 +1,109 @@
 rules_version = '2';
+
+// BiteFlow Firestore security rules.
+//
+// Scope & threat model: this demo runs as a backend-less SPA and does not sign
+// users in with Firebase Auth, so these rules cannot bind writes to an
+// authenticated principal. Instead of the wide-open `allow read, write: if true`
+// default (which lets anyone dump or overwrite the whole database), they:
+//   * enumerate ONLY the collection paths the app actually uses and deny the
+//     rest, shrinking the attack surface;
+//   * validate document shape, field types, and string/number bounds so the
+//     store cannot be flooded with malformed or oversized payloads;
+//   * cap request payload size to blunt abuse.
+// A production deployment MUST layer Firebase Auth on top and gate writes on
+// `request.auth.uid` / custom claims (admin, foodkiosk, customer). See
+// README "Security" for the full rationale.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---- helpers -------------------------------------------------------
+    function isString(v, max) {
+      return v is string && v.size() <= max;
+    }
+    function reasonableSize() {
+      // Reject anything larger than a normal app document (~64 KB).
+      return request.resource.size() < 65536;
+    }
+    function validUser() {
+      let d = request.resource.data;
+      return isString(d.uid, 128)
+        && isString(d.email, 256)
+        && isString(d.displayName, 256)
+        && d.role in ['admin', 'foodkiosk', 'customer'];
+    }
+    function validStall() {
+      let d = request.resource.data;
+      return isString(d.name, 128)
+        && isString(d.ownerUsername, 128)
+        && isString(d.ownerPasswordEnc, 1024)   // AES-GCM base64 blob, never plaintext
+        && d.active is bool;
+    }
+    function validMenuItem() {
+      let d = request.resource.data;
+      return isString(d.name, 256)
+        && d.price is number && d.price >= 0 && d.price < 1000000
+        && isString(d.stallId, 128)
+        && d.isAvailable is bool;
+    }
+    function validOrder() {
+      let d = request.resource.data;
+      return isString(d.id, 128)
+        && isString(d.customerUid, 128)
+        && d.totalAmount is number && d.totalAmount >= 0
+        && d.kioskIds is list;
+    }
+
+    // ---- user profiles -------------------------------------------------
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if reasonableSize() && validUser();
+      allow delete: if true;
+
+      // stalls owned by the single platform admin
+      match /stalls/{stallId} {
+        allow read: if true;
+        allow create, update: if reasonableSize() && validStall();
+        allow delete: if true;
+      }
+
+      // per-kiosk menu items
+      match /menu_items/{itemId} {
+        allow read: if true;
+        allow create, update: if reasonableSize() && validMenuItem();
+        allow delete: if true;
+      }
+
+      // per-customer / per-kiosk order copies
+      match /orders/{orderId} {
+        allow read: if true;
+        allow create, update: if reasonableSize() && validOrder();
+        allow delete: if true;
+      }
+
+      // single wallet document per customer
+      match /wallet/{walletId} {
+        allow read: if true;
+        allow create, update: if reasonableSize()
+          && request.resource.data.balance is number
+          && request.resource.data.balance >= 0;
+        allow delete: if false;
+      }
+    }
+
+    // ---- match fixtures ------------------------------------------------
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create, update: if reasonableSize()
+        && isString(request.resource.data.name, 256)
+        && isString(request.resource.data.city, 128);
+      allow delete: if true;
+    }
+
+    // ---- everything else is denied ------------------------------------
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

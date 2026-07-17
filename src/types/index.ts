@@ -38,6 +38,12 @@ export interface MenuItem {
   prepTime: number; // in minutes
 }
 
+// A line in the customer's shopping cart before checkout.
+export interface CartItem {
+  item: MenuItem;
+  quantity: number;
+}
+
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
 export interface OrderLineItem {
