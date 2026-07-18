@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { db } from '../utils/database';
 import type { Stall, StallSession } from '../types';
-import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, USER_TRANSLATIONS, type KioskLanguageCode } from '../utils/translations';
+import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
 import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 
 interface StallLoginProps {
@@ -52,7 +52,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
             <span style={{ fontSize: '0.8rem' }}>🌐</span>
             <select
               value={language}
-              aria-label="Select language"
+              aria-label={KIOSK_TRANSLATIONS[language].selectLanguage}
               onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
             >
@@ -84,7 +84,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
               id="kiosk-username-field"
               type="text"
               className="input-field"
-              placeholder="e.g. burger_junction"
+              placeholder={KIOSK_TRANSLATIONS[language].usernamePlaceholder}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               style={{ textTransform: 'lowercase' }}
@@ -93,7 +93,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
 
           <div>
             <label htmlFor="kiosk-password-field" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-              {USER_TRANSLATIONS[language].passwordLabel}
+              {KIOSK_TRANSLATIONS[language].passwordLabel}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -108,7 +108,7 @@ export const StallLogin: React.FC<StallLoginProps> = ({ onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? KIOSK_TRANSLATIONS[language].hidePassword : KIOSK_TRANSLATIONS[language].showPassword}
                 aria-pressed={showPassword}
                 style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >

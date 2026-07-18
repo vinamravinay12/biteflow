@@ -252,30 +252,32 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
     setPassError('');
     setPassSuccess('');
 
+    const t = KIOSK_TRANSLATIONS[language];
+
     if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) {
-      setPassError('All fields are required.');
+      setPassError(t.passAllFieldsRequired);
       return;
     }
 
     const verified = await db.verifyStallCredentials(stall.ownerUsername, currentPasswordInput);
     if (!verified) {
-      setPassError('Incorrect current password.');
+      setPassError(t.passIncorrectCurrent);
       return;
     }
 
     if (newPasswordInput !== confirmPasswordInput) {
-      setPassError('New passwords do not match.');
+      setPassError(t.passMismatch);
       return;
     }
 
     if (newPasswordInput.length < 4) {
-      setPassError('Password must be at least 4 characters.');
+      setPassError(t.passTooShort);
       return;
     }
 
     const success = await db.changeStallPassword(stall.id, newPasswordInput);
     if (success) {
-      setPassSuccess('Password updated successfully!');
+      setPassSuccess(t.changePassSuccess);
       setCurrentPasswordInput('');
       setNewPasswordInput('');
       setConfirmPasswordInput('');
@@ -284,7 +286,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         setPassSuccess('');
       }, 1500);
     } else {
-      setPassError('Failed to update password.');
+      setPassError(t.changePassError);
     }
   };
 
@@ -467,7 +469,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
-              aria-label="Select language"
+              aria-label={KIOSK_TRANSLATIONS[language].selectLanguage}
               onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -482,7 +484,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
           <button onClick={() => setIsPassModalOpen(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Lock size={15} /> {KIOSK_TRANSLATIONS[language].changePassButton}
           </button>
-          <button onClick={loadData} className="btn btn-secondary" title="Refresh data" aria-label="Refresh data">
+          <button onClick={loadData} className="btn btn-secondary" title={KIOSK_TRANSLATIONS[language].refreshData} aria-label={KIOSK_TRANSLATIONS[language].refreshData}>
             <RefreshCw size={18} aria-hidden="true" />
           </button>
           <button onClick={onLogout} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1109,7 +1111,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </h3>
 
               {menuItems.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>No menu items to display.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>{KIOSK_TRANSLATIONS[language].noMenuItems}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {menuItems.slice(0, 4).map((item, index) => {
@@ -1184,7 +1186,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </h3>
               <button
                 onClick={() => setIsMenuModalOpen(false)}
-                aria-label="Close"
+                aria-label={KIOSK_TRANSLATIONS[language].closeLabel}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} />
@@ -1194,13 +1196,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             <form onSubmit={handleSubmitMenu} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <label htmlFor="menu-item-name" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Item Name
+                  {KIOSK_TRANSLATIONS[language].itemNameLabel}
                 </label>
                 <input
                   id="menu-item-name"
                   type="text"
                   className="input-field"
-                  placeholder="e.g. Bacon Avocado Burger"
+                  placeholder={KIOSK_TRANSLATIONS[language].itemNamePlaceholder}
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                 />
@@ -1208,12 +1210,12 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <label htmlFor="menu-item-desc" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Description
+                  {KIOSK_TRANSLATIONS[language].itemDescLabel}
                 </label>
                 <textarea
                   id="menu-item-desc"
                   className="input-field"
-                  placeholder="Describe details, ingredients, or allergens..."
+                  placeholder={KIOSK_TRANSLATIONS[language].itemDescPlaceholder}
                   value={itemDescription}
                   onChange={(e) => setItemDescription(e.target.value)}
                   rows={2}
@@ -1224,7 +1226,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label htmlFor="menu-item-price" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                    Price ($)
+                    {KIOSK_TRANSLATIONS[language].itemPrice} ($)
                   </label>
                   <input
                     id="menu-item-price"
@@ -1239,7 +1241,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
                 <div>
                   <label htmlFor="menu-item-prep" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                    Prep Time (mins)
+                    {KIOSK_TRANSLATIONS[language].itemPrepTime}
                   </label>
                   <input
                     id="menu-item-prep"
@@ -1254,7 +1256,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <label htmlFor="menu-item-category" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Category
+                  {KIOSK_TRANSLATIONS[language].itemCategory}
                 </label>
                 <select
                   id="menu-item-category"
@@ -1275,7 +1277,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <span style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Food Image
+                  {KIOSK_TRANSLATIONS[language].itemImageLabel}
                 </span>
                 
                 {/* Tab selector */}
@@ -1378,7 +1380,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                     <input
                       type="text"
                       className="input-field"
-                      placeholder="Paste image URL (e.g. https://images.unsplash.com/...)"
+                      placeholder={KIOSK_TRANSLATIONS[language].imageUrlPlaceholder}
                       value={customImageUrl}
                       onChange={(e) => setCustomImageUrl(e.target.value)}
                       style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}
@@ -1386,13 +1388,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                     
                     {/* Instructions helper */}
                     <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                      💡 <strong>Tip for Unsplash:</strong> Right-click the photo on Unsplash, select <strong>"Copy image address"</strong> (or "Copy image link"), and paste that direct link here.
+                      💡 <strong>{KIOSK_TRANSLATIONS[language].unsplashTip}</strong> {KIOSK_TRANSLATIONS[language].unsplashTipBody}
                     </p>
 
                     {/* Warning if they paste a webpage URL */}
                     {customImageUrl && customImageUrl.includes('unsplash.com/photos/') && !customImageUrl.includes('images.unsplash.com/') && (
                       <p style={{ color: 'var(--accent-orange)', fontSize: '0.75rem', marginTop: '0.5rem', lineHeight: '1.4' }}>
-                        ⚠️ <strong>This is an Unsplash webpage URL, not a direct image URL.</strong> The browser will fail to load it. Please follow the tip above to copy the direct link.
+                        ⚠️ <strong>{KIOSK_TRANSLATIONS[language].unsplashWarning}</strong> {KIOSK_TRANSLATIONS[language].unsplashWarningBody}
                       </p>
                     )}
 
@@ -1406,7 +1408,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500';
                           }}
                         />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Image Preview</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].imagePreview}</span>
                       </div>
                     )}
                   </div>
@@ -1440,7 +1442,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                           style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }}
                         />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Successfully loaded!</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{KIOSK_TRANSLATIONS[language].imageLoaded}</span>
                           <button
                             type="button"
                             onClick={() => setUploadedImage('')}
@@ -1526,7 +1528,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </h3>
               <button
                 onClick={() => setIsPassModalOpen(false)}
-                aria-label="Close"
+                aria-label={KIOSK_TRANSLATIONS[language].closeLabel}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} />
@@ -1536,7 +1538,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <label htmlFor="merchant-current-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Current Merchant Password
+                  {KIOSK_TRANSLATIONS[language].currentPassLabel}
                 </label>
                 <input
                   id="merchant-current-password"
@@ -1550,13 +1552,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <label htmlFor="merchant-new-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  New Password
+                  {KIOSK_TRANSLATIONS[language].newPassLabel}
                 </label>
                 <input
                   id="merchant-new-password"
                   type="password"
                   className="input-field"
-                  placeholder="Minimum 4 characters"
+                  placeholder={KIOSK_TRANSLATIONS[language].newPassPlaceholder}
                   value={newPasswordInput}
                   onChange={(e) => setNewPasswordInput(e.target.value)}
                 />
@@ -1564,13 +1566,13 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div>
                 <label htmlFor="merchant-confirm-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                  Confirm New Password
+                  {KIOSK_TRANSLATIONS[language].confirmPassLabel}
                 </label>
                 <input
                   id="merchant-confirm-password"
                   type="password"
                   className="input-field"
-                  placeholder="Re-enter new password"
+                  placeholder={KIOSK_TRANSLATIONS[language].confirmPassPlaceholder}
                   value={confirmPasswordInput}
                   onChange={(e) => setConfirmPasswordInput(e.target.value)}
                 />

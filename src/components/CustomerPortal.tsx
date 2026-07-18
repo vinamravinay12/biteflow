@@ -343,7 +343,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           setUser({ uid: userCredential.user.uid, email, displayName: name });
         } else {
           if (!authDisplayName.trim()) {
-            setAuthError('Please enter your full name.');
+            setAuthError(USER_TRANSLATIONS[language].authNameRequired);
             setAuthLoading(false);
             return;
           }
@@ -375,17 +375,17 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             setUser(found);
             await loadData();
           } else {
-            setAuthError('Invalid email or password. Sign up first!');
+            setAuthError(USER_TRANSLATIONS[language].authInvalidLogin);
           }
         } else {
           if (!authDisplayName.trim()) {
-            setAuthError('Please enter your full name.');
+            setAuthError(USER_TRANSLATIONS[language].authNameRequired);
             setAuthLoading(false);
             return;
           }
           const exists = users.some((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase());
           if (exists) {
-            setAuthError('Email already registered.');
+            setAuthError(USER_TRANSLATIONS[language].authEmailTaken);
             setAuthLoading(false);
             return;
           }
@@ -403,7 +403,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           await loadData();
         }
       } catch {
-        setAuthError('Sandbox authentication failed.');
+        setAuthError(USER_TRANSLATIONS[language].authFailed);
       } finally {
         setAuthLoading(false);
       }
@@ -675,8 +675,7 @@ Rules:
       const guardMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'ai',
-        text: USER_TRANSLATIONS[language].aiSafetyGuard ||
-          "I can only help with food orders and menu questions. Let me know what you'd like to eat! 🍔",
+        text: USER_TRANSLATIONS[language].aiSafetyGuard,
         timestamp: new Date().toISOString()
       };
       setChatMessages(prev => [...prev, guardMsg]);
@@ -811,16 +810,16 @@ Rules:
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (wallet.balance < cartTotal) {
-      alert('Insufficient wallet balance! Please add funds to your wallet.');
+      alert(USER_TRANSLATIONS[language].alertInsufficientFunds);
       return;
     }
 
     if (!standName.trim()) {
-      alert('Please specify your Stand / Section in the cart delivery details.');
+      alert(USER_TRANSLATIONS[language].alertStandRequired);
       return;
     }
     if (!seatNumber.trim()) {
-      alert('Please specify your Seat Number in the cart delivery details.');
+      alert(USER_TRANSLATIONS[language].alertSeatRequired);
       return;
     }
 
@@ -914,7 +913,7 @@ Rules:
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
-                aria-label="Select language"
+                aria-label={USER_TRANSLATIONS[language].selectLanguage}
                 onChange={(e) => setLanguage(e.target.value as LanguageCode)}
                 style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
               >
@@ -1000,7 +999,7 @@ Rules:
                     id="auth-display-name"
                     type="text"
                     required
-                    placeholder="e.g. Alex Mercer"
+                    placeholder={USER_TRANSLATIONS[language].namePlaceholder}
                     value={authDisplayName}
                     onChange={(e) => setAuthDisplayName(e.target.value)}
                     style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
@@ -1041,7 +1040,7 @@ Rules:
                 <button
                   type="button"
                   onClick={() => setShowAuthPassword(!showAuthPassword)}
-                  aria-label={showAuthPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showAuthPassword ? USER_TRANSLATIONS[language].hidePassword : USER_TRANSLATIONS[language].showPassword}
                   aria-pressed={showAuthPassword}
                   style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
@@ -1069,7 +1068,7 @@ Rules:
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirmPassword ? USER_TRANSLATIONS[language].hidePassword : USER_TRANSLATIONS[language].showPassword}
                     aria-pressed={showConfirmPassword}
                     style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   >
@@ -1099,7 +1098,7 @@ Rules:
               }}
             >
               {authLoading ? (
-                <span>Loading...</span>
+                <span>{USER_TRANSLATIONS[language].loading}</span>
               ) : (
                 <span>{authMode === 'login' ? USER_TRANSLATIONS[language].signInTab : USER_TRANSLATIONS[language].signUpTab}</span>
               )}
@@ -1130,7 +1129,7 @@ Rules:
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
-                aria-label="Select language"
+                aria-label={USER_TRANSLATIONS[language].selectLanguage}
                 onChange={(e) => setLanguage(e.target.value as LanguageCode)}
                 style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
               >
@@ -1157,7 +1156,7 @@ Rules:
             onSubmit={(e) => {
               e.preventDefault();
               if (!selectedMatchId) {
-                alert('Please select a match.');
+                alert(USER_TRANSLATIONS[language].alertSelectMatch);
                 return;
               }
               setHasSubmittedMatchDetails(true);
@@ -1316,7 +1315,7 @@ Rules:
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
-              aria-label="Select language"
+              aria-label={USER_TRANSLATIONS[language].selectLanguage}
               onChange={(e) => setLanguage(e.target.value as LanguageCode)}
               style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -1517,7 +1516,7 @@ Rules:
                   role="log"
                   aria-live="polite"
                   aria-atomic="false"
-                  aria-label={USER_TRANSLATIONS[language].aiConciergeTitle || 'AI Concierge conversation'}
+                  aria-label={USER_TRANSLATIONS[language].aiConciergeTitle}
                   style={{
                   flex: 1,
                   maxHeight: '380px',
@@ -1675,7 +1674,7 @@ Rules:
                                 id="chat-stand-input"
                                 type="text"
                                 required
-                                placeholder="e.g. West Stand"
+                                placeholder={USER_TRANSLATIONS[language].standPlaceholder}
                                 value={standName}
                                 onChange={(e) => setStandName(e.target.value)}
                                 style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
@@ -1690,7 +1689,7 @@ Rules:
                                 id="chat-seat-input"
                                 type="text"
                                 required
-                                placeholder="e.g. C-14"
+                                placeholder={USER_TRANSLATIONS[language].seatPlaceholder}
                                 value={seatNumber}
                                 onChange={(e) => setSeatNumber(e.target.value)}
                                 style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
@@ -1793,8 +1792,8 @@ Rules:
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder={USER_TRANSLATIONS[language].chatInputPlaceholder || "Ask BiteFlow AI Concierge..."}
-                    aria-label={USER_TRANSLATIONS[language].chatInputPlaceholder || "Ask BiteFlow AI Concierge"}
+                    placeholder={USER_TRANSLATIONS[language].chatPlaceholder}
+                    aria-label={USER_TRANSLATIONS[language].chatPlaceholder}
                     className="input-field"
                     style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
                   />
@@ -1804,7 +1803,7 @@ Rules:
                   <button
                     type="button"
                     onClick={() => setShowCart(true)}
-                    aria-label={`${USER_TRANSLATIONS[language].cartTitle || 'Open cart'} (${cart.reduce((s, c) => s + c.quantity, 0)})`}
+                    aria-label={`${USER_TRANSLATIONS[language].cartTitle} (${cart.reduce((s, c) => s + c.quantity, 0)})`}
                     style={{
                       position: 'relative', 
                       padding: '0.6rem', 
@@ -1871,7 +1870,7 @@ Rules:
                     <div style={{ width: '200px' }}>
                       <select
                         className="input-field"
-                        aria-label="Filter by food stall"
+                        aria-label={USER_TRANSLATIONS[language].filterByStall}
                         value={selectedStallId}
                         onChange={(e) => setSelectedStallId(e.target.value)}
                       >
@@ -1886,7 +1885,7 @@ Rules:
                     <button
                       onClick={() => setShowCart(!showCart)}
                       className="btn"
-                      aria-label="Toggle shopping cart"
+                      aria-label={USER_TRANSLATIONS[language].cartTitle}
                       style={{ 
                         position: 'relative',
                         padding: '0.6rem 1.25rem', 
@@ -2018,7 +2017,7 @@ Rules:
                                       }}
                                       className="btn btn-secondary"
                                       style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                      aria-label="Decrease quantity"
+                                      aria-label={USER_TRANSLATIONS[language].decreaseQuantity}
                                     >
                                       {cartEntry.quantity <= 1 ? '🗑' : '−'}
                                     </button>
@@ -2029,7 +2028,7 @@ Rules:
                                       onClick={() => updateCartQty(item.id, 1)}
                                       className="btn btn-secondary"
                                       style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                      aria-label="Increase quantity"
+                                      aria-label={USER_TRANSLATIONS[language].increaseQuantity}
                                     >
                                       +
                                     </button>
@@ -2257,7 +2256,7 @@ Rules:
             className="glass-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={USER_TRANSLATIONS[language].cartTitle || 'Your cart and wallet'}
+            aria-label={USER_TRANSLATIONS[language].cartTitle}
             style={{
               width: '100%',
               maxWidth: '440px',
@@ -2279,7 +2278,7 @@ Rules:
               </h3>
               <button
                 onClick={() => setShowCart(false)}
-                aria-label={USER_TRANSLATIONS[language].close || 'Close'}
+                aria-label={USER_TRANSLATIONS[language].close}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} aria-hidden="true" />
@@ -2375,7 +2374,7 @@ Rules:
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <button
                             onClick={() => updateCartQty(item.id, -1)}
-                            aria-label={`${USER_TRANSLATIONS[language].decreaseQuantity || 'Decrease quantity'}: ${item.name}`}
+                            aria-label={`${USER_TRANSLATIONS[language].decreaseQuantity}: ${item.name}`}
                             style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                           >
                             <Minus size={10} aria-hidden="true" />
@@ -2383,7 +2382,7 @@ Rules:
                           <span aria-live="polite" style={{ fontSize: '0.85rem', fontWeight: 600, width: '20px', textAlign: 'center' }}>{quantity}</span>
                           <button
                             onClick={() => updateCartQty(item.id, 1)}
-                            aria-label={`${USER_TRANSLATIONS[language].increaseQuantity || 'Increase quantity'}: ${item.name}`}
+                            aria-label={`${USER_TRANSLATIONS[language].increaseQuantity}: ${item.name}`}
                             style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                           >
                             <Plus size={10} aria-hidden="true" />
@@ -2392,8 +2391,8 @@ Rules:
                           <button
                             onClick={() => removeFromCart(item.id)}
                             style={{ marginLeft: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer' }}
-                            aria-label={`${USER_TRANSLATIONS[language].removeItem || 'Remove'}: ${item.name}`}
-                            title="Remove"
+                            aria-label={`${USER_TRANSLATIONS[language].removeItem}: ${item.name}`}
+                            title={USER_TRANSLATIONS[language].removeItem}
                           >
                             <Trash2 size={14} aria-hidden="true" />
                           </button>
@@ -2420,7 +2419,7 @@ Rules:
                         id="cart-stand-input"
                         type="text"
                         required
-                        placeholder="e.g. West Stand"
+                        placeholder={USER_TRANSLATIONS[language].standPlaceholder}
                         value={standName}
                         onChange={(e) => setStandName(e.target.value)}
                         style={{ width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.45rem 0.6rem', color: 'white', fontSize: '0.8rem', boxSizing: 'border-box' }}
@@ -2435,7 +2434,7 @@ Rules:
                         id="cart-seat-input"
                         type="text"
                         required
-                        placeholder="e.g. C-14"
+                        placeholder={USER_TRANSLATIONS[language].seatPlaceholder}
                         value={seatNumber}
                         onChange={(e) => setSeatNumber(e.target.value)}
                         style={{ width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.45rem 0.6rem', color: 'white', fontSize: '0.8rem', boxSizing: 'border-box' }}
@@ -2647,7 +2646,7 @@ Rules:
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Payment Method:</span>
-                <span style={{ color: 'var(--accent-cyan)' }}>Simulated Wallet Balance</span>
+                <span style={{ color: 'var(--accent-cyan)' }}>{USER_TRANSLATIONS[language].simulatedWalletBalance}</span>
               </div>
             </div>
 
@@ -2709,7 +2708,7 @@ Rules:
               </h3>
               <button
                 onClick={() => setShowSeatMapModal(false)}
-                aria-label="Close Seat Map"
+                aria-label={USER_TRANSLATIONS[language].closeSeatMap}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
                 <X size={20} aria-hidden="true" />
@@ -2723,7 +2722,7 @@ Rules:
 
             {/* Visual Stadium Ring (SVG) */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-              <svg width="180" height="180" viewBox="0 0 200 200" style={{ transform: 'rotate(-45deg)' }} role="group" aria-label="Stadium stand sections">
+              <svg width="180" height="180" viewBox="0 0 200 200" style={{ transform: 'rotate(-45deg)' }} role="group" aria-label={USER_TRANSLATIONS[language].stadiumStands}>
                 {/* Center Pitch (decorative) */}
                 <rect x="75" y="75" width="50" height="50" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" strokeWidth="2" rx="4" aria-hidden="true" />
                 <circle cx="100" cy="100" r="12" fill="none" stroke="var(--accent-green)" strokeWidth="1.5" aria-hidden="true" />
@@ -2737,7 +2736,7 @@ Rules:
                   cursor="pointer"
                   role="radio"
                   tabIndex={0}
-                  aria-label="North Stand"
+                  aria-label={USER_TRANSLATIONS[language].northStand}
                   aria-checked={tempStandName.includes('North')}
                   onClick={() => setTempStandName('North Stand')}
                   onKeyDown={(e) => handleStandKey(e, 'North Stand')}
@@ -2752,7 +2751,7 @@ Rules:
                   cursor="pointer"
                   role="radio"
                   tabIndex={0}
-                  aria-label="East Stand"
+                  aria-label={USER_TRANSLATIONS[language].eastStand}
                   aria-checked={tempStandName.includes('East')}
                   onClick={() => setTempStandName('East Stand')}
                   onKeyDown={(e) => handleStandKey(e, 'East Stand')}
@@ -2767,7 +2766,7 @@ Rules:
                   cursor="pointer"
                   role="radio"
                   tabIndex={0}
-                  aria-label="South Stand"
+                  aria-label={USER_TRANSLATIONS[language].southStand}
                   aria-checked={tempStandName.includes('South')}
                   onClick={() => setTempStandName('South Stand')}
                   onKeyDown={(e) => handleStandKey(e, 'South Stand')}
@@ -2782,7 +2781,7 @@ Rules:
                   cursor="pointer"
                   role="radio"
                   tabIndex={0}
-                  aria-label="West Stand"
+                  aria-label={USER_TRANSLATIONS[language].westStand}
                   aria-checked={tempStandName.includes('West')}
                   onClick={() => setTempStandName('West Stand')}
                   onKeyDown={(e) => handleStandKey(e, 'West Stand')}
@@ -2800,7 +2799,7 @@ Rules:
 
             {/* Stand Label */}
             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'inline-block', marginBottom: '1.25rem' }}>
-              {language === 'es' ? 'Sector Seleccionado:' : 'Active Sector:'} <strong style={{ color: 'var(--accent-cyan)' }}>{tempStandName}</strong>
+              {USER_TRANSLATIONS[language].seatMapActiveSector} <strong style={{ color: 'var(--accent-cyan)' }}>{tempStandName}</strong>
             </div>
 
             {/* Seats Grid */}
@@ -2845,7 +2844,7 @@ Rules:
             {/* Selected Status Row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1.25rem', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>
-                {language === 'es' ? 'Tu Selección:' : 'Selected Coordinates:'}
+                {USER_TRANSLATIONS[language].seatMapSelected}
               </span>
               <strong style={{ color: 'white' }}>
                 {tempStandName} ({tempSeatNumber})
@@ -2860,7 +2859,7 @@ Rules:
                 className="btn btn-secondary" 
                 style={{ flex: 1, padding: '0.6rem 1rem' }}
               >
-                {language === 'es' ? 'Cancelar' : 'Cancel'}
+                {USER_TRANSLATIONS[language].cancel}
               </button>
               <button 
                 type="button" 
@@ -2872,7 +2871,7 @@ Rules:
                 className="btn btn-primary" 
                 style={{ flex: 1, padding: '0.6rem 1rem', background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)' }}
               >
-                {language === 'es' ? 'Confirmar Asiento' : 'Confirm Seat'}
+                {USER_TRANSLATIONS[language].confirmSeat}
               </button>
             </div>
 
