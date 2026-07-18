@@ -12,8 +12,24 @@ npm run verify   # lint → typecheck → test:coverage → build
 | :-- | :-- | :-- |
 | Lint (react, typescript, jsx-a11y) | `npm run lint` | 0 errors, 0 warnings |
 | Types (strict mode) | `npm run typecheck` | 0 errors |
-| Tests (coverage-enforced) | `npm run test:coverage` | 65 passing, 100% lines covered |
+| Tests (coverage-enforced) | `npm run test:coverage` | 65 passing |
 | Production build | `npm run build` | passing |
+
+Coverage is enforced in two tiers (`vite.config.ts`). The pure domain modules that
+carry the business rules are held at **100% lines** and fail the build below it:
+
+| Module | Lines | Branches |
+| :-- | :--: | :--: |
+| `aiActions.ts` — AI action parsing & safety | 100% | 91% |
+| `cart.ts` — cart & multi-kiosk money math | 100% | 86% |
+| `crypto.ts` — AES-GCM & admin auth hashing | 100% | 88% |
+| `useDocumentLanguage.ts` — lang/dir a11y hook | 100% | 75% |
+
+The **global floor is 40%**, which is the honest project-wide figure. It is dragged
+down by `database.ts` (~19%), whose LocalStorage fallback logic is tested but whose
+Firestore SDK passthroughs are not. That file is deliberately **included** in the
+report rather than excluded — excluding it would inflate the headline number instead
+of reflecting reality.
 
 ## 2. Architecture — pure logic separated from UI
 
