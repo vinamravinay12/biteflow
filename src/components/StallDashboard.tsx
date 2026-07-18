@@ -590,13 +590,12 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                   style={{ 
                     padding: '0.4rem 0.9rem', 
                     fontSize: '0.8rem',
-                    textTransform: 'capitalize',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.35rem'
                   }}
                 >
-                  {f} 
+                  {KIOSK_TRANSLATIONS[language]['status' + f.charAt(0).toUpperCase() + f.slice(1)] || f} 
                   <span style={{ 
                     opacity: 0.7, 
                     fontSize: '0.75rem',
