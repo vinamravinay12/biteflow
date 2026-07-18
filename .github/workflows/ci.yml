@@ -13,7 +13,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history so the secret scan can inspect every commit, not just
           # the tip — a key leaked and later removed is still a leaked key.
