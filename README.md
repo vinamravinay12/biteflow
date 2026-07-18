@@ -87,52 +87,70 @@ npm run build
 
 ---
 
+## 📚 Documentation
+
+Detailed engineering documentation lives in dedicated files, each with evidence:
+
+| Doc | Covers |
+| :-- | :-- |
+| [SECURITY.md](SECURITY.md) | Threat model, server-side key handling, auth, Firestore rules, AI hardening, HTTP headers |
+| [TESTING.md](TESTING.md) | Test strategy, coverage numbers, automated a11y testing, CI |
+| [ACCESSIBILITY.md](ACCESSIBILITY.md) | WCAG 2.1 AA approach, keyboard/RTL/live regions, automated enforcement |
+| [EFFICIENCY.md](EFFICIENCY.md) | Bundle analysis, code splitting, network behaviour |
+| [CODE_QUALITY.md](CODE_QUALITY.md) | Architecture, type safety, quality gate |
+
+Run the full quality gate with a single command:
+
+```bash
+npm run verify   # lint → typecheck → test:coverage → build
+```
+
+---
+
 ## 🔒 Security
 
-Biteflow is a backend-less single-page app (SPA), which shapes what security can and cannot guarantee. The measures below reflect that honestly rather than overclaiming.
+Full details in **[SECURITY.md](SECURITY.md)**. Highlights:
 
-* **No plaintext admin password anywhere.** The platform-admin login compares a SHA-256 digest stored in the environment (`VITE_ADMIN_PASSWORD_HASH`) — the plaintext is never in the source, the bundle, the README, or the UI. Rotate it with:
-  ```bash
-  npm run hash:password "your-new-strong-password"
-  # paste the printed digest into .env as VITE_ADMIN_PASSWORD_HASH
-  ```
-  Login also **fails closed**: with no digest configured, authentication is rejected rather than falling back to any default.
-* **Hardened Firestore rules.** The default wildcard `allow read, write: if true` has been replaced with per-collection rules that validate document shape, field types, and string/number bounds and cap payload size (`firestore.rules`). This shrinks the attack surface and blocks malformed/oversized writes. *Known limitation:* because the demo does not sign users in with Firebase Auth, rules cannot bind writes to an authenticated principal — a production deployment must layer Firebase Auth and gate writes on `request.auth` / custom claims. This is documented inline in the rules file.
-* **Secrets kept out of version control.** `.env` is git-ignored; `.env.example` documents every variable with placeholders. The Firebase *web* config is public by design (it is not a secret).
-* **Credential handling.** Merchant passwords are AES-GCM encrypted (`src/utils/crypto.ts`) rather than stored in plaintext. The file itself documents the caveat that a client-shipped key cannot provide true secrecy in an SPA — the honest posture, not security theater.
-* **Constant-time comparison** (`timingSafeEqual`) is used for the admin credential check to avoid leaking match progress via timing.
+* **The Gemini API key is never shipped to the browser.** AI requests route through a server-side Cloud Function (`functions/index.js`) behind a Hosting rewrite (`/api/concierge`) that holds the key as a Secret Manager secret, rate-limits per IP, and validates input. The client only receives generated text.
+* **Every Firestore access requires a Firebase Auth session.** `ensureFirebaseAuth()` signs admins, merchants, and guests in anonymously; registered customers upgrade to email/password. The wide-open `allow read, write: if true` default is gone, replaced by shape/type/bound/size-validated rules.
+* **No plaintext admin password anywhere.** Only a SHA-256 digest lives in the environment; comparison is timing-safe and **fails closed**. Rotate with `npm run hash:password "…"`.
+* **Prompt-injection defense.** User input is sanitized, length-clamped, and screened against 13 jailbreak patterns — on the client *and* again server-side.
+* **OWASP-aligned headers** (CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy) via `firebase.json`.
+* **CodeQL + Dependabot + `npm audit`** run in CI.
 
-> ⚠️ **If you cloned an earlier commit:** the previously published demo password (`biteflow-admin-2026`) is considered compromised and must be rotated using the command above.
+> ⚠️ **If you cloned an earlier commit:** the previously published demo password (`biteflow-admin-2026`) is considered compromised and has been rotated.
 
 ---
 
 ## ♿ Accessibility
 
-* **Dynamic language & direction.** `<html lang>` and `<html dir>` update live with the selected language via the `useDocumentLanguage` hook — screen readers switch pronunciation off `lang`, and Arabic renders in native `dir="rtl"`.
-* **Labeled controls.** Icon-only buttons (cart, quantity +/–, remove, close, refresh, edit/delete, password visibility) expose `aria-label`s; decorative icons are marked `aria-hidden`. Form inputs and every language `<select>` have accessible names.
-* **Live regions & dialogs.** The AI Concierge thread is an `aria-live="polite"` log so new replies are announced; the cart drawer uses `role="dialog"` / `aria-modal`.
-* **Toggle state.** Password-visibility toggles expose `aria-pressed`.
+Full details in **[ACCESSIBILITY.md](ACCESSIBILITY.md)**. Highlights:
+
+* **Enforced automatically:** `jsx-a11y` lint rules are build **errors**, and `vitest-axe` asserts zero violations on rendered components.
+* **Dynamic language & direction.** `<html lang>`/`<html dir>` track the selected language; Arabic renders in native RTL.
+* **Fully keyboard operable**, including the interactive SVG stadium seat map (stands are `role="radio"` with Enter/Space activation) and a skip-to-main-content link.
+* **Labeled controls** throughout — every input has an associated `<label>`; icon-only buttons carry `aria-label`s; decorative icons are `aria-hidden`.
+* **Live regions & dialogs.** The Concierge thread is a polite `role="log"`; modals use `role="dialog"`/`aria-modal` and close on Escape.
+* **`prefers-reduced-motion`** disables non-essential animation.
 
 ---
 
 ## 🛠️ Verification & Testing
 
-* **Automated unit tests (`npm test`)** — 39 tests across 5 suites (Vitest), covering the real business logic the UI depends on:
-  * `aiActions` — the Gemini action-tag parser (`[ADD_TO_CART]`, `[ITEMS]`, `[SHOW_CHECKOUT]`), including malformed-JSON resilience and rejection of injected/unknown item ids.
-  * `cart` — cart totals, item counts, and multi-kiosk order grouping/subtotals.
-  * `crypto` — AES-GCM round-trips plus the admin-auth SHA-256 / `verifyHash` / `timingSafeEqual` helpers (validated against NIST vectors).
-  * `database` — wallet load/deduct/refund arithmetic (including overdraft protection) and stall credential verification.
-  * `translations` — localization key parity across all languages.
-* **Coverage (`npm run test:coverage`)** — the domain logic in `src/utils` reports ~100% line coverage on the tested modules.
-* **Type Safety** — fully checked with `tsc -b`; linted with `oxlint`.
-* **Manual/visual** — verified in-browser across desktop and mobile viewports, with RTL confirmed for Arabic.
+Full details in **[TESTING.md](TESTING.md)**. Highlights:
+
+* **65 tests across 7 suites** (Vitest), covering the AI action-tag parser and its injection resistance, cart/multi-kiosk money math, AES-GCM + admin-auth hashing (against NIST vectors), wallet arithmetic with overdraft protection, localization key parity, and a component + axe accessibility test.
+* **Coverage is enforced** — thresholds in `vite.config.ts` fail the run if breached. The pure domain modules (`aiActions`, `cart`, `crypto`) sit at **100% line coverage**.
+* **CI** runs audit → lint → typecheck → coverage → build on every push and PR, plus weekly CodeQL analysis.
+* **Known gap:** no Playwright E2E suite yet; the critical order journey is verified manually in-browser.
 
 ---
 
 ## 📌 Assumptions
 
-* **Demo-grade auth.** Without a backend, admin/merchant auth is client-side and intended for demonstration; production requires Firebase Auth (see [Security](#-security)).
+* **Demo-grade authorization.** All roles hold a real Firebase Auth session, but per-role authorization (admin vs merchant vs customer) would need custom claims minted by a trusted backend — documented in [SECURITY.md](SECURITY.md).
 * **Sandbox mode.** If Firebase env vars are absent, the app runs entirely against a LocalStorage sandbox so it is fully usable offline for evaluation.
 * **Wallet is a mock gateway.** Funds are simulated in-app; no real payment processing occurs.
-* **Gemini is optional.** With no `VITE_GEMINI_API_KEY`, the AI Concierge falls back to an offline keyword-matching assistant, so the flow always works.
+* **Gemini is optional.** If neither the server proxy nor a local dev key is reachable, the AI Concierge falls back to an offline keyword-matching assistant, so the ordering flow always works.
+* **The AI proxy requires the Blaze plan.** Cloud Functions need a billing-enabled Firebase project. Without it, deploy hosting only and use a local `VITE_GEMINI_API_KEY` for development.
 * **Single platform admin.** The model assumes exactly one admin account, which is why stalls live under a deterministic `users/{ADMIN_UID}/stalls` path.
