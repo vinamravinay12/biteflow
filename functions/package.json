@@ -1,0 +1,13 @@
+{
+  "name": "biteflow-functions",
+  "description": "Server-side Gemini proxy for the BiteFlow AI Concierge — keeps the API key off the client.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^6.0.0"
+  }
+}

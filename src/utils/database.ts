@@ -128,27 +128,14 @@ export const db = {
           await db.ensureUserProfile(stall.id, 'foodkiosk', `${stall.ownerUsername}@biteflow.app`, stall.name);
         }
 
-        // Migration: Copy pre-existing orders into their respective kiosk subcollections
-        try {
-          console.log("Checking for pre-existing orders to migrate to kiosk subcollections...");
-          const allOrdersSnap = await getDocs(collectionGroup(firestoreDb, 'orders'));
-          for (const orderDoc of allOrdersSnap.docs) {
-            const order = orderDoc.data() as Order;
-            if (order.id && order.kioskIds && order.customerUid) {
-              // Ensure we write this order to all kiosks listed in order.kioskIds
-              for (const kId of order.kioskIds) {
-                const kioskOrderRef = doc(firestoreDb, 'users', kId, 'orders', order.id);
-                const kioskOrderSnap = await getDoc(kioskOrderRef);
-                if (!kioskOrderSnap.exists()) {
-                  console.log(`Migrating order ${order.id} to kiosk ${kId}...`);
-                  await setDoc(kioskOrderRef, order);
-                }
-              }
-            }
-          }
-        } catch (migErr) {
-          console.error("Migration of pre-existing orders failed:", migErr);
-        }
+        // NOTE: a one-time backfill that copied legacy orders into each kiosk's
+        // subcollection used to run here. It was removed deliberately: it ran on
+        // EVERY page load for EVERY visitor, performing a full cross-customer
+        // scan of the orders collection group (reading other customers' names
+        // and seat numbers) and re-writing documents. `placeOrder` already writes
+        // each new order to both the customer's and every involved kiosk's
+        // subcollection, so no backfill is needed for current data. A historical
+        // migration belongs in a one-off admin script, not in app startup.
 
         const matchesSnap = await getDocs(collection(firestoreDb, 'matches'));
         if (matchesSnap.empty && initialMatches.length > 0) {
@@ -159,10 +146,10 @@ export const db = {
 
         // NOTE: we intentionally do NOT seed orders/wallet for the fixed
         // DEFAULT_CUSTOMER_UID in Firebase mode. Under the auth-required rules,
-        // identity is the Firebase Auth uid (anonymous or registered), and the
-        // wallet is owner-locked to `request.auth.uid`. Each real customer gets
-        // their own starter wallet on first access (see getWallet). The fixed
-        // sandbox-customer demo data only applies to LocalStorage sandbox mode.
+        // customer identity is the Firebase Auth uid (anonymous or registered),
+        // so each real customer gets their own starter wallet on first access
+        // (see getWallet). The fixed sandbox-customer demo orders/wallet only
+        // apply to LocalStorage sandbox mode.
       } catch (e) {
         console.error("Failed to seed Firestore collections:", e);
       }
@@ -374,13 +361,26 @@ export const db = {
   },
 
   // Every order platform-wide, for admin-level stats.
+  //
+  // NOTE: the security rules deliberately DENY `collectionGroup('orders')` so no
+  // signed-in session can enumerate other customers' orders (names, seat numbers).
+  // A permission-denied here is therefore the EXPECTED, designed behaviour — not a
+  // fault — so it degrades quietly to locally-known orders. A true platform-wide
+  // count needs role-based custom claims or a server-maintained aggregate.
+  // See SECURITY.md and firestore.rules.
   getAllOrders: async (): Promise<Order[]> => {
     if (firestoreDb) {
       try {
         const snap = await getDocs(collectionGroup(firestoreDb, 'orders'));
         return snap.docs.map((d: any) => d.data() as Order);
-      } catch (e) {
-        console.error("Firestore getAllOrders failed, falling back to LocalStorage:", e);
+      } catch (e: any) {
+        if (e?.code === 'permission-denied') {
+          console.info(
+            'Platform-wide order stats unavailable by design (cross-customer reads are denied); using locally-known orders.'
+          );
+        } else {
+          console.error('Firestore getAllOrders failed, falling back to LocalStorage:', e);
+        }
       }
     }
     const results: Order[] = [];

@@ -111,3 +111,34 @@ export function sanitizePrompt(rawText: string): string {
   const clean = (rawText || '').replace(/<[^>]*>/g, '').trim();
   return clean.length > 500 ? clean.substring(0, 500) : clean;
 }
+
+// Known prompt-injection / jailbreak patterns. Sanitizing (stripping HTML) is
+// not enough on its own — a user can type plain-text instructions that try to
+// override the system prompt ("ignore previous instructions", "you are now…").
+// These are matched case-insensitively so the chat layer can refuse to forward
+// a manipulative message to the model.
+const INJECTION_PATTERNS: RegExp[] = [
+  /ignore\s+(all\s+)?(the\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i,
+  /disregard\s+(all\s+)?(your|the|previous)\b/i,
+  /forget\s+(everything|all|your|the)\b/i,
+  /\byou\s+are\s+now\b/i,
+  /\bpretend\s+(you|to)\s+be\b/i,
+  /\bact\s+as\s+(if|an?|the)\b/i,
+  /override\s+(the\s+)?(system|safety|instructions?|prompt)/i,
+  /\breveal\s+(your|the)\s+(system\s+)?(prompt|instructions?)/i,
+  /^\s*system\s*:/im,
+  /^\s*\[?\s*system\s*\]?\s*:/im,
+  /\bsudo\b/i,
+  /\brm\s+-rf\b/i,
+  /\b(eval|exec)\s*\(/i,
+];
+
+/**
+ * Returns true if the input looks like a prompt-injection / jailbreak attempt.
+ * The chat layer uses this to refuse forwarding the message to Gemini and to
+ * respond with a safe, canned reply instead.
+ */
+export function detectPromptInjection(rawText: string): boolean {
+  if (typeof rawText !== 'string' || rawText.length === 0) return false;
+  return INJECTION_PATTERNS.some((re) => re.test(rawText));
+}

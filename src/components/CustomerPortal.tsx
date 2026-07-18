@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
 import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, UserWallet, Match } from '../types';
 import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils/translations';
-import { parseAiResponse, getMatchingItems, sanitizePrompt } from '../utils/aiActions';
+import { parseAiResponse, getMatchingItems, sanitizePrompt, detectPromptInjection } from '../utils/aiActions';
 import { computeCartTotal, groupCartByKiosk } from '../utils/cart';
 import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import {
@@ -207,7 +207,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [aiTyping, setAiTyping] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState<{ item: MenuItem; quantity: number; lang: LanguageCode } | null>(null);
   const [showVisualMenu, setShowVisualMenu] = useState(false);
+  // Client-side key is optional and only used as a local-dev fallback. In a
+  // production build the Concierge routes through the server-side proxy
+  // (/api/concierge), so no Gemini key is shipped in the bundle.
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const AI_PROXY_URL = '/api/concierge';
+  const aiEnabled = geminiApiKey.trim() !== '' || import.meta.env.PROD;
 
   // Authentication State
   const [user, setUser] = useState<AuthedUser | null>(null);
@@ -225,6 +230,25 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [showSeatMapModal, setShowSeatMapModal] = useState(false);
   const [tempStandName, setTempStandName] = useState('West Stand');
   const [tempSeatNumber, setTempSeatNumber] = useState('A-1');
+
+  // Keyboard activation for the SVG stand wedges (Enter / Space), so the
+  // stadium map is fully operable without a mouse.
+  const handleStandKey = (e: React.KeyboardEvent, stand: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setTempStandName(stand);
+    }
+  };
+
+  // Close the seat-map modal with Escape while it is open.
+  useEffect(() => {
+    if (!showSeatMapModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSeatMapModal(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showSeatMapModal]);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -378,7 +402,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           setUser(newUser);
           await loadData();
         }
-      } catch (err: any) {
+      } catch {
         setAuthError('Sandbox authentication failed.');
       } finally {
         setAuthLoading(false);
@@ -432,7 +456,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
           }
           applyCustomerIdentity(parsed.uid, parsed.displayName, parsed.email);
           setUser(parsed);
-        } catch (e) {
+        } catch {
           localStorage.removeItem('sandbox_logged_in_user');
           setUser(null);
         }
@@ -501,7 +525,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     addToCart(item, 1);
     setAiTyping(true);
 
-    if (geminiApiKey.trim()) {
+    if (aiEnabled) {
       // Use Gemini to confirm in the user's language
       try {
         const confirmPrompt = `The user just added 1x "${item.name}" ($${item.price}) to their cart. Confirm this addition and ask if they want to order more or are done. Keep it short (1-2 sentences). Reply in the SAME language the conversation has been in so far.`;
@@ -578,6 +602,27 @@ Rules:
       parts: [{ text }]
     });
 
+    // Preferred path: the server-side proxy holds the API key. The client sends
+    // the built conversation and gets back only the generated text.
+    try {
+      const proxyRes = await fetch(AI_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents, systemInstruction, userMessage: text })
+      });
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        if (typeof data?.text === 'string' && data.text) return data.text;
+      }
+    } catch {
+      // Proxy unavailable (e.g. local dev without emulator) — fall through.
+    }
+
+    // Local-dev fallback: call Gemini directly with a client key if one is set.
+    if (!apiKey) {
+      throw new Error('AI proxy unavailable and no client key configured.');
+    }
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
@@ -624,8 +669,24 @@ Rules:
     setChatInput('');
     setAiTyping(true);
 
-    // Check if we can use the live Gemini API
-    if (geminiApiKey.trim()) {
+    // Safety guard: refuse to forward prompt-injection / jailbreak attempts to
+    // the model. Reply with a safe canned message instead of the raw request.
+    if (detectPromptInjection(rawText) || detectPromptInjection(sanitizedText)) {
+      const guardMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'ai',
+        text: USER_TRANSLATIONS[language].aiSafetyGuard ||
+          "I can only help with food orders and menu questions. Let me know what you'd like to eat! 🍔",
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages(prev => [...prev, guardMsg]);
+      setAiTyping(false);
+      return;
+    }
+
+    // Use the live model when available: the server-side proxy in production,
+    // or a local client key in development. Falls back to the offline assistant.
+    if (aiEnabled) {
       try {
         const rawResponse = await callGeminiAPI(sanitizedText, chatMessages, geminiApiKey, language);
 
@@ -1434,8 +1495,8 @@ Rules:
               <div>
                 <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                   <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
-                  <span style={{ fontSize: '0.7rem', color: geminiApiKey ? 'var(--accent-green)' : 'var(--accent-orange)', background: geminiApiKey ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: geminiApiKey ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
-                    {geminiApiKey ? '🤖 Live Gemini 2.5 Flash' : '⚡ Simulated AI'}
+                  <span style={{ fontSize: '0.7rem', color: aiEnabled ? 'var(--accent-green)' : 'var(--accent-orange)', background: aiEnabled ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: aiEnabled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
+                    {aiEnabled ? '🤖 Live Gemini 2.5 Flash' : '⚡ Simulated AI'}
                   </span>
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
@@ -2550,13 +2611,16 @@ Rules:
           padding: '1.5rem',
           boxSizing: 'border-box'
         }}>
-          <div 
-            className="glass-panel" 
-            style={{ 
-              maxWidth: '560px', 
-              width: '100%', 
-              padding: '2rem', 
-              borderRadius: '24px', 
+          <div
+            className="glass-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="seat-map-title"
+            style={{
+              maxWidth: '560px',
+              width: '100%',
+              padding: '2rem',
+              borderRadius: '24px',
               textAlign: 'center',
               boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
               border: '1px solid var(--border-color-glow)',
@@ -2567,15 +2631,15 @@ Rules:
           >
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h3 id="seat-map-title" className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 🏟️ {language === 'es' ? 'Mapa de Asientos del Estadio' : language === 'fr' ? 'Plan des Sièges du Stade' : language === 'de' ? 'Stadion-Sitzplan' : language === 'it' ? 'Mappa dei Posti dello Stadio' : language === 'pt' ? 'Mapa de Assentos do Estádio' : language === 'nl' ? 'Stadion Plattegrond' : language === 'ar' ? 'خريطة مقاعد الملعب' : 'Stadium Seating Map'}
               </h3>
-              <button 
+              <button
                 onClick={() => setShowSeatMapModal(false)}
                 aria-label="Close Seat Map"
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -2586,49 +2650,69 @@ Rules:
 
             {/* Visual Stadium Ring (SVG) */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-              <svg width="180" height="180" viewBox="0 0 200 200" style={{ transform: 'rotate(-45deg)' }}>
-                {/* Center Pitch */}
-                <rect x="75" y="75" width="50" height="50" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" strokeWidth="2" rx="4" />
-                <circle cx="100" cy="100" r="12" fill="none" stroke="var(--accent-green)" strokeWidth="1.5" />
-                
-                {/* Wedges representing Stands */}
-                <path 
-                  d="M 100 100 L 20 20 A 113.14 113.14 0 0 1 180 20 Z" 
-                  fill={tempStandName.includes('North') ? 'rgba(6, 182, 212, 0.25)' : 'rgba(255,255,255,0.03)'} 
+              <svg width="180" height="180" viewBox="0 0 200 200" style={{ transform: 'rotate(-45deg)' }} role="group" aria-label="Stadium stand sections">
+                {/* Center Pitch (decorative) */}
+                <rect x="75" y="75" width="50" height="50" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" strokeWidth="2" rx="4" aria-hidden="true" />
+                <circle cx="100" cy="100" r="12" fill="none" stroke="var(--accent-green)" strokeWidth="1.5" aria-hidden="true" />
+
+                {/* Wedges representing Stands — keyboard-operable radio-style options */}
+                <path
+                  d="M 100 100 L 20 20 A 113.14 113.14 0 0 1 180 20 Z"
+                  fill={tempStandName.includes('North') ? 'rgba(6, 182, 212, 0.25)' : 'rgba(255,255,255,0.03)'}
                   stroke={tempStandName.includes('North') ? 'var(--accent-cyan)' : 'var(--border-color)'}
                   strokeWidth="2"
                   cursor="pointer"
+                  role="radio"
+                  tabIndex={0}
+                  aria-label="North Stand"
+                  aria-checked={tempStandName.includes('North')}
                   onClick={() => setTempStandName('North Stand')}
+                  onKeyDown={(e) => handleStandKey(e, 'North Stand')}
                   style={{ transition: 'all 0.2s' }}
                 />
-                
-                <path 
-                  d="M 100 100 L 180 20 A 113.14 113.14 0 0 1 180 180 Z" 
-                  fill={tempStandName.includes('East') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)'} 
+
+                <path
+                  d="M 100 100 L 180 20 A 113.14 113.14 0 0 1 180 180 Z"
+                  fill={tempStandName.includes('East') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)'}
                   stroke={tempStandName.includes('East') ? 'var(--accent-green)' : 'var(--border-color)'}
                   strokeWidth="2"
                   cursor="pointer"
+                  role="radio"
+                  tabIndex={0}
+                  aria-label="East Stand"
+                  aria-checked={tempStandName.includes('East')}
                   onClick={() => setTempStandName('East Stand')}
+                  onKeyDown={(e) => handleStandKey(e, 'East Stand')}
                   style={{ transition: 'all 0.2s' }}
                 />
-                
-                <path 
-                  d="M 100 100 L 180 180 A 113.14 113.14 0 0 1 20 180 Z" 
-                  fill={tempStandName.includes('South') ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255,255,255,0.03)'} 
+
+                <path
+                  d="M 100 100 L 180 180 A 113.14 113.14 0 0 1 20 180 Z"
+                  fill={tempStandName.includes('South') ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255,255,255,0.03)'}
                   stroke={tempStandName.includes('South') ? 'var(--accent-orange)' : 'var(--border-color)'}
                   strokeWidth="2"
                   cursor="pointer"
+                  role="radio"
+                  tabIndex={0}
+                  aria-label="South Stand"
+                  aria-checked={tempStandName.includes('South')}
                   onClick={() => setTempStandName('South Stand')}
+                  onKeyDown={(e) => handleStandKey(e, 'South Stand')}
                   style={{ transition: 'all 0.2s' }}
                 />
-                
-                <path 
-                  d="M 100 100 L 20 180 A 113.14 113.14 0 0 1 20 20 Z" 
-                  fill={tempStandName.includes('West') ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)'} 
+
+                <path
+                  d="M 100 100 L 20 180 A 113.14 113.14 0 0 1 20 20 Z"
+                  fill={tempStandName.includes('West') ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)'}
                   stroke={tempStandName.includes('West') ? 'var(--accent-purple)' : 'var(--border-color)'}
                   strokeWidth="2"
                   cursor="pointer"
+                  role="radio"
+                  tabIndex={0}
+                  aria-label="West Stand"
+                  aria-checked={tempStandName.includes('West')}
                   onClick={() => setTempStandName('West Stand')}
+                  onKeyDown={(e) => handleStandKey(e, 'West Stand')}
                   style={{ transition: 'all 0.2s' }}
                 />
               </svg>
@@ -2660,6 +2744,7 @@ Rules:
                         type="button"
                         onClick={() => setTempSeatNumber(seatId)}
                         aria-label={`Seat ${seatId}`}
+                        aria-pressed={isSelected}
                         style={{
                           width: '32px',
                           height: '32px',

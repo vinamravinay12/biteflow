@@ -1,13 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense, type ComponentType } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { db } from './utils/database';
 import { ensureFirebaseAuth } from './utils/firebase';
 import type { StallSession } from './types';
 import { CustomerPortal } from './components/CustomerPortal';
-import { StallLogin } from './components/StallLogin';
-import { StallDashboard } from './components/StallDashboard';
-import { SuperAdminPortal } from './components/SuperAdminPortal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
+
+/**
+ * Wraps a dynamic import so a failed chunk fetch self-heals.
+ *
+ * After a deploy, a browser holding a cached index.html requests asset chunks by
+ * their OLD content hash — filenames that no longer exist — and the lazy route
+ * would otherwise crash with "Failed to fetch dynamically imported module".
+ * On the first such failure we force one hard reload to pick up the new
+ * index.html (guarded by sessionStorage so we can never reload-loop).
+ */
+// Mirrors React.lazy's own signature (including its `any`) so the wrapper is a
+// drop-in replacement and each component's prop types are preserved.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyWithReload<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(() =>
+    factory().catch((error) => {
+      const key = 'biteflow_chunk_reloaded';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        // Never resolves — the reload takes over.
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error; // already retried once; let the ErrorBoundary handle it
+    })
+  );
+}
+
+// The admin and merchant portals are separate routes that customers (the
+// default landing) never open, so they are code-split into their own chunks
+// and only fetched on demand — keeping the initial customer bundle smaller.
+const StallLogin = lazyWithReload(() =>
+  import('./components/StallLogin').then((m) => ({ default: m.StallLogin }))
+);
+const StallDashboard = lazyWithReload(() =>
+  import('./components/StallDashboard').then((m) => ({ default: m.StallDashboard }))
+);
+const SuperAdminPortal = lazyWithReload(() =>
+  import('./components/SuperAdminPortal').then((m) => ({ default: m.SuperAdminPortal }))
+);
+
+const RouteFallback = () => (
+  <div
+    role="status"
+    aria-live="polite"
+    style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
+  >
+    Loading…
+  </div>
+);
 
 function App() {
   const [activeStall, setActiveStall] = useState<StallSession | null>(null);
@@ -37,29 +87,36 @@ function App() {
   };
 
   return (
+    <ErrorBoundary>
     <Router>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <div className="app-container" style={{ minHeight: '100vh', background: 'var(--bg-dark)' }}>
-        <Routes>
-          {/* Customer Portal (Default path /) */}
-          <Route path="/" element={<CustomerPortal />} />
+        <main id="main-content">
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              {/* Customer Portal (Default path /) */}
+              <Route path="/" element={<CustomerPortal />} />
 
-          {/* Super Admin Portal (Path /admin) */}
-          <Route path="/admin" element={<SuperAdminPortal />} />
+              {/* Super Admin Portal (Path /admin) */}
+              <Route path="/admin" element={<SuperAdminPortal />} />
 
-          {/* Stall Merchant Portal (Path /foodkiosk) */}
-          <Route 
-            path="/foodkiosk" 
-            element={
-              activeStall ? (
-                <StallDashboard stall={activeStall} onLogout={handleStallLogout} />
-              ) : (
-                <StallLogin onLoginSuccess={handleStallLogin} />
-              )
-            } 
-          />
-        </Routes>
+              {/* Stall Merchant Portal (Path /foodkiosk) */}
+              <Route
+                path="/foodkiosk"
+                element={
+                  activeStall ? (
+                    <StallDashboard stall={activeStall} onLogout={handleStallLogout} />
+                  ) : (
+                    <StallLogin onLoginSuccess={handleStallLogin} />
+                  )
+                }
+              />
+            </Routes>
+          </Suspense>
+        </main>
       </div>
     </Router>
+    </ErrorBoundary>
   );
 }
 

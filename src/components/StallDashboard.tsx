@@ -215,9 +215,12 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
     });
   };
 
+  // `loadData` is a stable closure over `stall`; the effect intentionally keys
+  // only on stall.id and polls on an interval, so exhaustive-deps is suppressed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadData();
-    // Set up auto-refresh timer to poll for new orders placed in Customer view
+    // Set up auto-refresh timer to poll for new orders placed in Customer view.
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, [stall.id]);
@@ -1191,10 +1194,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
             <form onSubmit={handleSubmitMenu} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="menu-item-name" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Item Name
                 </label>
                 <input
+                  id="menu-item-name"
                   type="text"
                   className="input-field"
                   placeholder="e.g. Bacon Avocado Burger"
@@ -1204,10 +1208,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="menu-item-desc" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Description
                 </label>
                 <textarea
+                  id="menu-item-desc"
                   className="input-field"
                   placeholder="Describe details, ingredients, or allergens..."
                   value={itemDescription}
@@ -1219,10 +1224,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <label htmlFor="menu-item-price" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     Price ($)
                   </label>
                   <input
+                    id="menu-item-price"
                     type="number"
                     step="0.01"
                     className="input-field"
@@ -1233,10 +1239,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <label htmlFor="menu-item-prep" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     Prep Time (mins)
                   </label>
                   <input
+                    id="menu-item-prep"
                     type="number"
                     className="input-field"
                     placeholder="10"
@@ -1247,10 +1254,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="menu-item-category" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Category
                 </label>
                 <select
+                  id="menu-item-category"
                   className="input-field"
                   value={itemCategory}
                   onChange={(e) => setItemCategory(e.target.value)}
@@ -1267,9 +1275,9 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <span style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Food Image
-                </label>
+                </span>
                 
                 {/* Tab selector */}
                 <div style={{ display: 'flex', gap: '0.25rem', padding: '0.2rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', marginBottom: '0.75rem' }}>
@@ -1528,10 +1536,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
 
             <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="merchant-current-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Current Merchant Password
                 </label>
                 <input
+                  id="merchant-current-password"
                   type="password"
                   className="input-field"
                   placeholder="••••••••"
@@ -1541,10 +1550,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="merchant-new-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   New Password
                 </label>
                 <input
+                  id="merchant-new-password"
                   type="password"
                   className="input-field"
                   placeholder="Minimum 4 characters"
@@ -1554,10 +1564,11 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="merchant-confirm-password" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Confirm New Password
                 </label>
                 <input
+                  id="merchant-confirm-password"
                   type="password"
                   className="input-field"
                   placeholder="Re-enter new password"

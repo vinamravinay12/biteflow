@@ -114,6 +114,25 @@ service cloud.firestore {
       }
     }
 
+    // ---- collection-group queries --------------------------------------
+    // A nested `match /users/{uid}/orders/{orderId}` rule does NOT authorize a
+    // collectionGroup() query — Firestore requires an explicit `/{path=**}/`
+    // rule. Menu items form the public catalogue (no personal data), so browsing
+    // them across every stall is safe to allow for any signed-in session.
+    match /{path=**}/menu_items/{itemId} {
+      allow read: if isAuthed();
+    }
+
+    // DELIBERATELY ABSENT: a `/{path=**}/orders/{orderId}` collection-group rule.
+    // Granting it would let ANY signed-in session (including an anonymous guest)
+    // enumerate every customer's orders — names, seat numbers, and totals. That
+    // is a privacy leak, so cross-customer order enumeration is denied outright.
+    // Consequence: the admin console's platform-wide order count cannot be
+    // computed client-side and falls back to locally-known orders. Restoring it
+    // properly requires role-based custom claims minted by a trusted backend
+    // (or an aggregate maintained server-side) — see SECURITY.md.
+    // Per-customer and per-kiosk order access still works via the nested paths.
+
     // ---- match fixtures (shared, admin-managed) ------------------------
     match /matches/{matchId} {
       allow read: if isAuthed();

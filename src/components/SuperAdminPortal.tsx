@@ -613,10 +613,11 @@ export const SuperAdminPortal: React.FC = () => {
 
             <form onSubmit={handleRegisterStall} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="stall-name" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Food Stall Name
                 </label>
                 <input
+                  id="stall-name"
                   type="text"
                   className="input-field"
                   placeholder="e.g. Waffle Wonders"
@@ -626,10 +627,11 @@ export const SuperAdminPortal: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="stall-description" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Description
                 </label>
                 <textarea
+                  id="stall-description"
                   className="input-field"
                   placeholder="Brief description of food offerings..."
                   value={description}
@@ -640,10 +642,11 @@ export const SuperAdminPortal: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="stall-city" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Stall Location / City
                 </label>
                 <select
+                  id="stall-city"
                   className="input-field"
                   value={stallCity}
                   onChange={(e) => setStallCity(e.target.value)}
@@ -656,10 +659,11 @@ export const SuperAdminPortal: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <label htmlFor="stall-logo" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     Logo Emoji
                   </label>
                   <select
+                    id="stall-logo"
                     className="input-field"
                     value={logoEmoji}
                     onChange={(e) => setLogoEmoji(e.target.value)}
@@ -672,15 +676,17 @@ export const SuperAdminPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <span style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     Branding Color
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                  </span>
+                  <div role="group" aria-label="Branding Color" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                     {colors.map(c => (
                       <button
                         key={c.value}
                         type="button"
                         onClick={() => setBannerColor(c.value)}
+                        aria-label={`Brand color ${c.name}`}
+                        aria-pressed={bannerColor === c.value}
                         style={{
                           width: '24px',
                           height: '24px',
@@ -704,12 +710,13 @@ export const SuperAdminPortal: React.FC = () => {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <label htmlFor="stall-owner-username" style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       Merchant Username (Autofilled)
                     </label>
                     <div style={{ position: 'relative' }}>
                       <Key size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
                       <input
+                        id="stall-owner-username"
                         type="text"
                         className="input-field"
                         placeholder="waffle-wonders"
@@ -721,13 +728,14 @@ export const SuperAdminPortal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <label htmlFor="stall-owner-password" style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       Merchant Password
                     </label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <Lock size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
                         <input
+                          id="stall-owner-password"
                           type="text"
                           className="input-field"
                           placeholder="Click Generate ➜"
@@ -915,10 +923,11 @@ export const SuperAdminPortal: React.FC = () => {
 
             <form onSubmit={handleCreateMatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <label htmlFor="match-name" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Match/Game Name
                 </label>
                 <input
+                  id="match-name"
                   type="text"
                   className="input-field"
                   placeholder="e.g. India vs Pakistan"
@@ -929,10 +938,11 @@ export const SuperAdminPortal: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <label htmlFor="match-city" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     City / Venue
                   </label>
                   <select
+                    id="match-city"
                     className="input-field"
                     value={matchCity}
                     onChange={(e) => {
@@ -947,10 +957,11 @@ export const SuperAdminPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  <label htmlFor="match-datetime" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                     Match Date & Time
                   </label>
                   <input
+                    id="match-datetime"
                     type="datetime-local"
                     className="input-field"
                     value={matchDateTime}
@@ -961,9 +972,9 @@ export const SuperAdminPortal: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                <span style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Assign Stalls for this Match
-                </label>
+                </span>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
                   Only showing active food stalls located in <strong>{matchCity || 'the specified city'}</strong>:
                 </p>

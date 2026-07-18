@@ -373,3 +373,35 @@ body {
     box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
   }
 }
+
+/* Skip-to-content link: visually hidden until it receives keyboard focus,
+   then pinned to the top-left so keyboard users can jump past the header. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  padding: 0.75rem 1.25rem;
+  background: var(--accent-cyan, #06b6d4);
+  color: #04121f;
+  font-weight: 700;
+  border-radius: 0 0 8px 0;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+  outline: 3px solid #fff;
+}
+
+/* Respect users who prefer reduced motion: neutralize non-essential animation
+   and transitions instead of playing spins, slides, and pulses (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
