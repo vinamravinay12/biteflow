@@ -1495,9 +1495,6 @@ Rules:
               <div>
                 <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                   <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
-                  <span style={{ fontSize: '0.75rem', color: aiEnabled ? 'var(--accent-green)' : 'var(--accent-orange)', background: aiEnabled ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: aiEnabled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
-                    {aiEnabled ? `🤖 ${USER_TRANSLATIONS[language].liveGeminiBadge}` : `⚡ ${USER_TRANSLATIONS[language].simulatedAiBadge}`}
-                  </span>
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
                   {USER_TRANSLATIONS[language].askLanguagePromptDesc}
