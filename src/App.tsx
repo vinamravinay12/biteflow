@@ -19,9 +19,7 @@ import './App.css';
 // Mirrors React.lazy's own signature (including its `any`) so the wrapper is a
 // drop-in replacement and each component's prop types are preserved.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lazyWithReload<T extends ComponentType<any>>(
-  factory: () => Promise<{ default: T }>
-) {
+function lazyWithReload<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
   return lazy(() =>
     factory().catch((error) => {
       const key = 'biteflow_chunk_reloaded';
@@ -53,7 +51,13 @@ const RouteFallback = () => (
   <div
     role="status"
     aria-live="polite"
-    style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
+    style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'var(--text-secondary)',
+    }}
   >
     Loading…
   </div>
@@ -88,34 +92,36 @@ function App() {
 
   return (
     <ErrorBoundary>
-    <Router>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
-      <div className="app-container" style={{ minHeight: '100vh', background: 'var(--bg-dark)' }}>
-        <main id="main-content">
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              {/* Customer Portal (Default path /) */}
-              <Route path="/" element={<CustomerPortal />} />
+      <Router>
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <div className="app-container" style={{ minHeight: '100vh', background: 'var(--bg-dark)' }}>
+          <main id="main-content">
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                {/* Customer Portal (Default path /) */}
+                <Route path="/" element={<CustomerPortal />} />
 
-              {/* Super Admin Portal (Path /admin) */}
-              <Route path="/admin" element={<SuperAdminPortal />} />
+                {/* Super Admin Portal (Path /admin) */}
+                <Route path="/admin" element={<SuperAdminPortal />} />
 
-              {/* Stall Merchant Portal (Path /foodkiosk) */}
-              <Route
-                path="/foodkiosk"
-                element={
-                  activeStall ? (
-                    <StallDashboard stall={activeStall} onLogout={handleStallLogout} />
-                  ) : (
-                    <StallLogin onLoginSuccess={handleStallLogin} />
-                  )
-                }
-              />
-            </Routes>
-          </Suspense>
-        </main>
-      </div>
-    </Router>
+                {/* Stall Merchant Portal (Path /foodkiosk) */}
+                <Route
+                  path="/foodkiosk"
+                  element={
+                    activeStall ? (
+                      <StallDashboard stall={activeStall} onLogout={handleStallLogout} />
+                    ) : (
+                      <StallLogin onLoginSuccess={handleStallLogin} />
+                    )
+                  }
+                />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
+      </Router>
     </ErrorBoundary>
   );
 }

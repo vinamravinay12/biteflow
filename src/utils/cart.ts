@@ -39,7 +39,7 @@ export function groupCartByKiosk(cart: CartItem[]): Record<string, KioskOrderEnt
     });
   });
 
-  Object.values(kioskOrders).forEach(k => {
+  Object.values(kioskOrders).forEach((k) => {
     k.subtotal = k.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   });
 
@@ -51,9 +51,9 @@ export function groupCartByKiosk(cart: CartItem[]): Record<string, KioskOrderEnt
  * Returns a new array (does not mutate the input) — safe for React state.
  */
 export function addItemToCart(cart: CartItem[], item: CartItem['item'], qty = 1): CartItem[] {
-  const existing = cart.find(c => c.item.id === item.id);
+  const existing = cart.find((c) => c.item.id === item.id);
   if (existing) {
-    return cart.map(c => (c.item.id === item.id ? { ...c, quantity: c.quantity + qty } : c));
+    return cart.map((c) => (c.item.id === item.id ? { ...c, quantity: c.quantity + qty } : c));
   }
   return [...cart, { item, quantity: qty }];
 }

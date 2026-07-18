@@ -6,7 +6,7 @@ let latestCleanup: any = null;
 vi.mock('react', () => ({
   useEffect: (cb: any) => {
     latestCleanup = cb();
-  }
+  },
 }));
 
 import { isRtl, useDocumentLanguage } from './useDocumentLanguage';
@@ -33,10 +33,10 @@ describe('useDocumentLanguage hook effect logic', () => {
       dir: 'ltr',
       getAttribute: vi.fn().mockReturnValue(null),
       setAttribute: vi.fn(),
-      removeAttribute: vi.fn()
+      removeAttribute: vi.fn(),
     };
     vi.stubGlobal('document', {
-      documentElement: mockHtmlElement
+      documentElement: mockHtmlElement,
     });
   });
 
@@ -59,7 +59,7 @@ describe('useDocumentLanguage hook effect logic', () => {
   it('correctly cleans up document attributes on unmount', () => {
     useDocumentLanguage('ar');
     expect(document.documentElement.lang).toBe('ar');
-    
+
     // Trigger cleanup function
     if (latestCleanup) latestCleanup();
 

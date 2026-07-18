@@ -14,18 +14,24 @@ const getKey = (): Promise<CryptoKey> => {
   if (!cachedKey) {
     cachedKey = crypto.subtle
       .digest('SHA-256', new TextEncoder().encode(RAW_KEY))
-      .then(hash => crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']));
+      .then((hash) =>
+        crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+      );
   }
   return cachedKey;
 };
 
 const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
-const fromBase64 = (b64: string): Uint8Array => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const fromBase64 = (b64: string): Uint8Array => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
 export const encryptText = async (plainText: string): Promise<string> => {
   const key = await getKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plainText));
+  const cipherBuf = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(plainText)
+  );
   const combined = new Uint8Array(iv.length + cipherBuf.byteLength);
   combined.set(iv, 0);
   combined.set(new Uint8Array(cipherBuf), iv.length);
@@ -47,7 +53,7 @@ export const decryptText = async (encoded: string): Promise<string> => {
 export const sha256Hex = async (input: string): Promise<string> => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
   return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 };
 

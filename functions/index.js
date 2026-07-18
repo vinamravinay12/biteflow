@@ -87,7 +87,11 @@ export const concierge = onRequest(
           body: JSON.stringify({
             contents,
             ...(systemInstruction
-              ? { systemInstruction: { parts: [{ text: String(systemInstruction).slice(0, 8000) }] } }
+              ? {
+                  systemInstruction: {
+                    parts: [{ text: String(systemInstruction).slice(0, 8000) }],
+                  },
+                }
               : {}),
             generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
           }),

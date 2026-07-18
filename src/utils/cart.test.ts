@@ -15,15 +15,33 @@ const makeItem = (over: Partial<MenuItem> & { id: string }): MenuItem => ({
   ...over,
 });
 
-const burger = makeItem({ id: 'b1', name: 'Burger', price: 8, stallId: 'barn', stallName: 'Burger Barn' });
-const fries = makeItem({ id: 'f1', name: 'Fries', price: 3.5, stallId: 'barn', stallName: 'Burger Barn' });
-const taco = makeItem({ id: 't1', name: 'Taco', price: 4, stallId: 'loco', stallName: 'Taco Loco' });
+const burger = makeItem({
+  id: 'b1',
+  name: 'Burger',
+  price: 8,
+  stallId: 'barn',
+  stallName: 'Burger Barn',
+});
+const fries = makeItem({
+  id: 'f1',
+  name: 'Fries',
+  price: 3.5,
+  stallId: 'barn',
+  stallName: 'Burger Barn',
+});
+const taco = makeItem({
+  id: 't1',
+  name: 'Taco',
+  price: 4,
+  stallId: 'loco',
+  stallName: 'Taco Loco',
+});
 
 describe('computeCartTotal', () => {
   it('sums price * quantity across lines', () => {
     const cart: CartItem[] = [
       { item: burger, quantity: 2 }, // 16
-      { item: fries, quantity: 1 },  // 3.5
+      { item: fries, quantity: 1 }, // 3.5
     ];
     expect(computeCartTotal(cart)).toBe(19.5);
   });
@@ -35,7 +53,12 @@ describe('computeCartTotal', () => {
 
 describe('computeCartCount', () => {
   it('sums quantities', () => {
-    expect(computeCartCount([{ item: burger, quantity: 2 }, { item: taco, quantity: 3 }])).toBe(5);
+    expect(
+      computeCartCount([
+        { item: burger, quantity: 2 },
+        { item: taco, quantity: 3 },
+      ])
+    ).toBe(5);
   });
 });
 
@@ -43,8 +66,8 @@ describe('groupCartByKiosk', () => {
   it('splits a multi-kiosk cart into per-kiosk entries with correct subtotals', () => {
     const cart: CartItem[] = [
       { item: burger, quantity: 2 }, // barn: 16
-      { item: fries, quantity: 2 },  // barn: 7  -> barn subtotal 23
-      { item: taco, quantity: 1 },   // loco: 4
+      { item: fries, quantity: 2 }, // barn: 7  -> barn subtotal 23
+      { item: taco, quantity: 1 }, // loco: 4
     ];
     const grouped = groupCartByKiosk(cart);
     expect(Object.keys(grouped).sort()).toEqual(['barn', 'loco']);

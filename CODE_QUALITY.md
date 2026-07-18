@@ -8,22 +8,22 @@ A single command runs the whole gate; CI runs it on every push and PR:
 npm run verify   # lint → typecheck → test:coverage → build
 ```
 
-| Check | Command | Status |
-| :-- | :-- | :-- |
-| Lint (react, typescript, jsx-a11y) | `npm run lint` | 0 errors, 0 warnings |
-| Types (strict mode) | `npm run typecheck` | 0 errors |
-| Tests (coverage-enforced) | `npm run test:coverage` | 65 passing |
-| Production build | `npm run build` | passing |
+| Check                              | Command                 | Status               |
+| :--------------------------------- | :---------------------- | :------------------- |
+| Lint (react, typescript, jsx-a11y) | `npm run lint`          | 0 errors, 0 warnings |
+| Types (strict mode)                | `npm run typecheck`     | 0 errors             |
+| Tests (coverage-enforced)          | `npm run test:coverage` | 65 passing           |
+| Production build                   | `npm run build`         | passing              |
 
 Coverage is enforced in two tiers (`vite.config.ts`). The pure domain modules that
 carry the business rules are held at **100% lines** and fail the build below it:
 
-| Module | Lines | Branches |
-| :-- | :--: | :--: |
-| `aiActions.ts` — AI action parsing & safety | 100% | 91% |
-| `cart.ts` — cart & multi-kiosk money math | 100% | 86% |
-| `crypto.ts` — AES-GCM & admin auth hashing | 100% | 88% |
-| `useDocumentLanguage.ts` — lang/dir a11y hook | 100% | 75% |
+| Module                                        | Lines | Branches |
+| :-------------------------------------------- | :---: | :------: |
+| `aiActions.ts` — AI action parsing & safety   | 100%  |   91%    |
+| `cart.ts` — cart & multi-kiosk money math     | 100%  |   86%    |
+| `crypto.ts` — AES-GCM & admin auth hashing    | 100%  |   88%    |
+| `useDocumentLanguage.ts` — lang/dir a11y hook | 100%  |   75%    |
 
 The **global floor is 40%**, which is the honest project-wide figure. It is dragged
 down by `database.ts` (~19%), whose LocalStorage fallback logic is tested but whose
@@ -64,9 +64,9 @@ Every function in `aiActions.ts` and `cart.ts` is **deterministic**: same input 
 - Auth **fails closed** when no credential digest is configured.
 - An app-level [`ErrorBoundary`](src/components/ErrorBoundary.tsx) prevents a single component failure from blanking the page.
 
-## 5. Comments explain *why*
+## 5. Comments explain _why_
 
-Comments document rationale and constraints, not mechanics — e.g. `crypto.ts` states plainly that a client-shipped key cannot provide real secrecy; `firestore.rules` explains why writes are gated on *authenticated + valid* rather than per-uid ownership. Known limitations are written down rather than hidden.
+Comments document rationale and constraints, not mechanics — e.g. `crypto.ts` states plainly that a client-shipped key cannot provide real secrecy; `firestore.rules` explains why writes are gated on _authenticated + valid_ rather than per-uid ownership. Known limitations are written down rather than hidden.
 
 ## 6. Consistency
 

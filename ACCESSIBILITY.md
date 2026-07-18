@@ -4,9 +4,9 @@
 
 ## 1. Automated enforcement
 
-| Layer | Tool | Result |
-| :-- | :-- | :-- |
-| Lint (static) | `jsx-a11y` rules in [`.oxlintrc.json`](.oxlintrc.json), set to **error** | 0 errors |
+| Layer               | Tool                                                                        | Result       |
+| :------------------ | :-------------------------------------------------------------------------- | :----------- |
+| Lint (static)       | `jsx-a11y` rules in [`.oxlintrc.json`](.oxlintrc.json), set to **error**    | 0 errors     |
 | Unit (rendered DOM) | `vitest-axe` in [`StallLogin.test.tsx`](src/components/StallLogin.test.tsx) | 0 violations |
 
 Enforced `jsx-a11y` rules: `alt-text`, `anchor-has-content`, `aria-props`, `aria-role`, `role-has-required-aria-props`, `label-has-associated-control`, `no-redundant-roles`. A missing label or invalid ARIA role now **fails the build**.

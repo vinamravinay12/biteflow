@@ -17,7 +17,7 @@ if (isFirebaseConfigured) {
       projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
       storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      appId: import.meta.env.VITE_FIREBASE_APP_ID
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
     };
     const app = initializeApp(firebaseConfig);
     // Firestore rejects any field whose value is `undefined` (e.g. an
@@ -26,12 +26,12 @@ if (isFirebaseConfigured) {
     // ignoreUndefinedProperties strips those fields instead of throwing.
     dbInstance = initializeFirestore(app, { ignoreUndefinedProperties: true });
     authInstance = getAuth(app);
-    console.log("Firebase services initialized successfully.");
+    console.log('Firebase services initialized successfully.');
   } catch (e) {
-    console.error("Firebase failed to initialize:", e);
+    console.error('Firebase failed to initialize:', e);
   }
 } else {
-  console.log("Firebase is not configured in .env. Operating in LocalStorage sandbox mode.");
+  console.log('Firebase is not configured in .env. Operating in LocalStorage sandbox mode.');
 }
 
 export { dbInstance as db, authInstance as auth };

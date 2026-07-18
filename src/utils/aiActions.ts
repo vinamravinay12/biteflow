@@ -60,8 +60,8 @@ export function parseAiResponse(rawResponse: string, menuItems: MenuItem[]): Par
   );
   const cartAdditions = rawAdditions
     .filter((a): a is { id: string; quantity?: unknown } => typeof a?.id === 'string')
-    .filter(a => menuItems.some(m => m.id === a.id))
-    .map(a => {
+    .filter((a) => menuItems.some((m) => m.id === a.id))
+    .map((a) => {
       const q = Number(a.quantity);
       const quantity = Number.isFinite(q) && q >= 1 ? Math.floor(q) : 1;
       return { id: a.id, quantity };
@@ -72,7 +72,7 @@ export function parseAiResponse(rawResponse: string, menuItems: MenuItem[]): Par
   const ids = safeParseArray<unknown>(text.match(ITEMS_RE)?.[1]).filter(
     (id): id is string => typeof id === 'string'
   );
-  const suggestedItems = menuItems.filter(m => ids.includes(m.id));
+  const suggestedItems = menuItems.filter((m) => ids.includes(m.id));
   text = text.replace(ITEMS_STRIP_RE, '').trim();
 
   return { text, cartAdditions, suggestedItems, showCheckout };
@@ -84,22 +84,79 @@ export function parseAiResponse(rawResponse: string, menuItems: MenuItem[]): Par
  */
 export function getMatchingItems(text: string, items: MenuItem[]): MenuItem[] {
   const t = text.toLowerCase();
-  const matchTaco = t.includes('taco') || t.includes('quesadilla') || t.includes('guacamole') || t.includes('mexic') || t.includes('burrito');
-  const matchBurger = t.includes('burger') || t.includes('hamburg') || t.includes('fries') || t.includes('papas') || t.includes('frites') || t.includes('patatine');
-  const matchWok = t.includes('wok') || t.includes('noodle') || t.includes('fideo') || t.includes('macarr') || t.includes('nouille') || t.includes('spaghett') || t.includes('dumpling') || t.includes('asian');
-  const matchSweet = t.includes('sweet') || t.includes('waffle') || t.includes('gelato') || t.includes('ice') || t.includes('helado') || t.includes('sorvete') || t.includes('glace') || t.includes('bubble') || t.includes('shake') || t.includes('doce') || t.includes('dessert') || t.includes('postre') || t.includes('dolce');
+  const matchTaco =
+    t.includes('taco') ||
+    t.includes('quesadilla') ||
+    t.includes('guacamole') ||
+    t.includes('mexic') ||
+    t.includes('burrito');
+  const matchBurger =
+    t.includes('burger') ||
+    t.includes('hamburg') ||
+    t.includes('fries') ||
+    t.includes('papas') ||
+    t.includes('frites') ||
+    t.includes('patatine');
+  const matchWok =
+    t.includes('wok') ||
+    t.includes('noodle') ||
+    t.includes('fideo') ||
+    t.includes('macarr') ||
+    t.includes('nouille') ||
+    t.includes('spaghett') ||
+    t.includes('dumpling') ||
+    t.includes('asian');
+  const matchSweet =
+    t.includes('sweet') ||
+    t.includes('waffle') ||
+    t.includes('gelato') ||
+    t.includes('ice') ||
+    t.includes('helado') ||
+    t.includes('sorvete') ||
+    t.includes('glace') ||
+    t.includes('bubble') ||
+    t.includes('shake') ||
+    t.includes('doce') ||
+    t.includes('dessert') ||
+    t.includes('postre') ||
+    t.includes('dolce');
 
-  return items.filter(item => {
+  return items.filter((item) => {
     const stallNameLower = item.stallName.toLowerCase();
     const categoryLower = item.category.toLowerCase();
-    if (matchTaco && (stallNameLower.includes('taco') || categoryLower.includes('mexican'))) return true;
-    if (matchBurger && (stallNameLower.includes('burger') || categoryLower.includes('burger') || categoryLower.includes('fries'))) return true;
-    if (matchWok && (stallNameLower.includes('wok') || stallNameLower.includes('roll') || categoryLower.includes('noodle') || categoryLower.includes('rice') || categoryLower.includes('asian'))) return true;
-    if (matchSweet && (stallNameLower.includes('sweet') || stallNameLower.includes('retreat') || categoryLower.includes('dessert') || categoryLower.includes('beverage') || categoryLower.includes('waffle'))) return true;
+    if (matchTaco && (stallNameLower.includes('taco') || categoryLower.includes('mexican')))
+      return true;
+    if (
+      matchBurger &&
+      (stallNameLower.includes('burger') ||
+        categoryLower.includes('burger') ||
+        categoryLower.includes('fries'))
+    )
+      return true;
+    if (
+      matchWok &&
+      (stallNameLower.includes('wok') ||
+        stallNameLower.includes('roll') ||
+        categoryLower.includes('noodle') ||
+        categoryLower.includes('rice') ||
+        categoryLower.includes('asian'))
+    )
+      return true;
+    if (
+      matchSweet &&
+      (stallNameLower.includes('sweet') ||
+        stallNameLower.includes('retreat') ||
+        categoryLower.includes('dessert') ||
+        categoryLower.includes('beverage') ||
+        categoryLower.includes('waffle'))
+    )
+      return true;
 
-    return item.name.toLowerCase().includes(t) ||
-           categoryLower.includes(t) ||
-           item.description.toLowerCase().includes(t);
+    return (
+      item.name.toLowerCase().includes(t) ||
+      categoryLower.includes(t) ||
+      item.description.toLowerCase().includes(t)
+    );
   });
 }
 

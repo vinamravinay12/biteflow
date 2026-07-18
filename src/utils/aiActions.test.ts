@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseAiResponse, getMatchingItems, sanitizePrompt, detectPromptInjection } from './aiActions';
+import {
+  parseAiResponse,
+  getMatchingItems,
+  sanitizePrompt,
+  detectPromptInjection,
+} from './aiActions';
 import type { MenuItem } from '../types';
 
 // Minimal MenuItem factory so tests declare only the fields they care about.
@@ -17,9 +22,34 @@ const makeItem = (over: Partial<MenuItem> & { id: string }): MenuItem => ({
 });
 
 const MENU: MenuItem[] = [
-  makeItem({ id: 'burger-1', name: 'Classic Burger', stallName: 'Burger Barn', category: 'Burgers', price: 8 }),
-  makeItem({ id: 'taco-1', name: 'Street Taco', stallName: 'Taco Loco', category: 'Mexican', price: 4 }),
-  makeItem({ id: 'gelato-1', name: 'Vanilla Gelato', stallName: 'Sweet Retreat', category: 'Dessert', price: 3 }),
+  makeItem({
+    id: 'burger-1',
+    name: 'Classic Burger',
+    stallName: 'Burger Barn',
+    category: 'Burgers',
+    price: 8,
+  }),
+  makeItem({
+    id: 'taco-1',
+    name: 'Street Taco',
+    stallName: 'Taco Loco',
+    category: 'Mexican',
+    price: 4,
+  }),
+  makeItem({
+    id: 'gelato-1',
+    name: 'Vanilla Gelato',
+    stallName: 'Sweet Retreat',
+    category: 'Dessert',
+    price: 3,
+  }),
+  makeItem({
+    id: 'noodle-1',
+    name: 'Chilli Garlic Noodles',
+    stallName: 'Wok This Way',
+    category: 'Noodles',
+    price: 7,
+  }),
 ];
 
 describe('parseAiResponse — control-tag parsing', () => {
@@ -46,7 +76,8 @@ describe('parseAiResponse — control-tag parsing', () => {
   });
 
   it('defaults missing/invalid quantity to 1 and floors/guards bad numbers', () => {
-    const raw = '[ADD_TO_CART: [{"id":"burger-1"},{"id":"taco-1","quantity":0},{"id":"gelato-1","quantity":2.9}]]';
+    const raw =
+      '[ADD_TO_CART: [{"id":"burger-1"},{"id":"taco-1","quantity":0},{"id":"gelato-1","quantity":2.9}]]';
     const { cartAdditions } = parseAiResponse(raw, MENU);
     expect(cartAdditions).toEqual([
       { id: 'burger-1', quantity: 1 },
@@ -58,7 +89,7 @@ describe('parseAiResponse — control-tag parsing', () => {
   it('resolves [ITEMS: ...] tags to suggestion cards', () => {
     const raw = 'Here are options [ITEMS: ["burger-1","gelato-1"]]';
     const { suggestedItems, text } = parseAiResponse(raw, MENU);
-    expect(suggestedItems.map(i => i.id)).toEqual(['burger-1', 'gelato-1']);
+    expect(suggestedItems.map((i) => i.id)).toEqual(['burger-1', 'gelato-1']);
     expect(text).toBe('Here are options');
   });
 
@@ -68,7 +99,10 @@ describe('parseAiResponse — control-tag parsing', () => {
   });
 
   it('returns no actions when there are no tags', () => {
-    const { cartAdditions, suggestedItems, showCheckout, text } = parseAiResponse('Just chatting.', MENU);
+    const { cartAdditions, suggestedItems, showCheckout, text } = parseAiResponse(
+      'Just chatting.',
+      MENU
+    );
     expect(cartAdditions).toEqual([]);
     expect(suggestedItems).toEqual([]);
     expect(showCheckout).toBe(false);
@@ -91,17 +125,22 @@ describe('parseAiResponse — control-tag parsing', () => {
 describe('getMatchingItems — offline fallback NLU', () => {
   it('matches burgers by keyword', () => {
     const res = getMatchingItems('I want a burger', MENU);
-    expect(res.map(i => i.id)).toContain('burger-1');
+    expect(res.map((i) => i.id)).toContain('burger-1');
   });
 
   it('matches tacos via the Mexican category', () => {
     const res = getMatchingItems('any tacos?', MENU);
-    expect(res.map(i => i.id)).toContain('taco-1');
+    expect(res.map((i) => i.id)).toContain('taco-1');
   });
 
   it('matches desserts by sweet keywords', () => {
     const res = getMatchingItems('something sweet like gelato', MENU);
-    expect(res.map(i => i.id)).toContain('gelato-1');
+    expect(res.map((i) => i.id)).toContain('gelato-1');
+  });
+
+  it('matches Asian dishes via the wok/noodle keywords', () => {
+    expect(getMatchingItems('any noodles?', MENU).map((i) => i.id)).toContain('noodle-1');
+    expect(getMatchingItems('some asian food', MENU).map((i) => i.id)).toContain('noodle-1');
   });
 
   it('returns empty for non-food gibberish', () => {

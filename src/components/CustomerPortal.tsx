@@ -1,21 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../utils/database';
-import type { Stall, MenuItem, Order, OrderStatus, OrderLineItem, UserWallet, Match } from '../types';
+import type {
+  Stall,
+  MenuItem,
+  Order,
+  OrderStatus,
+  OrderLineItem,
+  UserWallet,
+  Match,
+} from '../types';
 import { USER_TRANSLATIONS, CUSTOMER_LOCALES, type LanguageCode } from '../utils/translations';
-import { parseAiResponse, getMatchingItems, sanitizePrompt, detectPromptInjection } from '../utils/aiActions';
+import {
+  parseAiResponse,
+  getMatchingItems,
+  sanitizePrompt,
+  detectPromptInjection,
+} from '../utils/aiActions';
 import { computeCartTotal, groupCartByKiosk } from '../utils/cart';
 import { useDocumentLanguage } from '../utils/useDocumentLanguage';
 import { SeatMapModal } from '../features/customer/SeatMapModal';
 import { CartDrawer } from '../features/customer/CartDrawer';
+import { AuthScreen } from '../features/customer/AuthScreen';
 import {
-  Search, ShoppingBag, Wallet, Plus, Clock,
-  Sparkles, ChevronRight, Info, CheckCircle,
-  LogOut, User, Lock, Mail, Calendar, Eye, EyeOff
+  Search,
+  ShoppingBag,
+  Wallet,
+  Plus,
+  Clock,
+  Sparkles,
+  ChevronRight,
+  Info,
+  CheckCircle,
+  LogOut,
+  Calendar,
 } from 'lucide-react';
 import { auth, ensureFirebaseAuth } from '../utils/firebase';
 import {
-  onAuthStateChanged, signInWithEmailAndPassword,
-  createUserWithEmailAndPassword, signOut, updateProfile
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
 } from 'firebase/auth';
 
 interface CustomerPortalProps {
@@ -53,137 +78,211 @@ const TRANSLATIONS = {
     noItems: USER_TRANSLATIONS.en.aiNoItems,
     foundItems: USER_TRANSLATIONS.en.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.en.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.en.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.en.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.en.aiHelp,
-    invalidQty: USER_TRANSLATIONS.en.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.en.aiInvalidQty,
   },
   es: {
     greeting: USER_TRANSLATIONS.es.aiGreeting,
     noItems: USER_TRANSLATIONS.es.aiNoItems,
     foundItems: USER_TRANSLATIONS.es.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.es.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.es.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.es.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.es.aiHelp,
-    invalidQty: USER_TRANSLATIONS.es.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.es.aiInvalidQty,
   },
   pt: {
     greeting: USER_TRANSLATIONS.pt.aiGreeting,
     noItems: USER_TRANSLATIONS.pt.aiNoItems,
     foundItems: USER_TRANSLATIONS.pt.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.pt.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.pt.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.pt.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.pt.aiHelp,
-    invalidQty: USER_TRANSLATIONS.pt.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.pt.aiInvalidQty,
   },
   fr: {
     greeting: USER_TRANSLATIONS.fr.aiGreeting,
     noItems: USER_TRANSLATIONS.fr.aiNoItems,
     foundItems: USER_TRANSLATIONS.fr.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.fr.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.fr.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.fr.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.fr.aiHelp,
-    invalidQty: USER_TRANSLATIONS.fr.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.fr.aiInvalidQty,
   },
   it: {
     greeting: USER_TRANSLATIONS.it.aiGreeting,
     noItems: USER_TRANSLATIONS.it.aiNoItems,
     foundItems: USER_TRANSLATIONS.it.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.it.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.it.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.it.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.it.aiHelp,
-    invalidQty: USER_TRANSLATIONS.it.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.it.aiInvalidQty,
   },
   de: {
     greeting: USER_TRANSLATIONS.de.aiGreeting,
     noItems: USER_TRANSLATIONS.de.aiNoItems,
     foundItems: USER_TRANSLATIONS.de.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.de.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.de.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.de.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.de.aiHelp,
-    invalidQty: USER_TRANSLATIONS.de.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.de.aiInvalidQty,
   },
   nl: {
     greeting: USER_TRANSLATIONS.nl.aiGreeting,
     noItems: USER_TRANSLATIONS.nl.aiNoItems,
     foundItems: USER_TRANSLATIONS.nl.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.nl.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.nl.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.nl.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.nl.aiHelp,
-    invalidQty: USER_TRANSLATIONS.nl.aiInvalidQty
+    invalidQty: USER_TRANSLATIONS.nl.aiInvalidQty,
   },
   ar: {
     greeting: USER_TRANSLATIONS.ar.aiGreeting,
     noItems: USER_TRANSLATIONS.ar.aiNoItems,
     foundItems: USER_TRANSLATIONS.ar.aiFoundItems,
     askQuantity: (name: string) => `${USER_TRANSLATIONS.ar.aiAskQuantity} ("${name}")`,
-    confirmed: (qty: number, name: string) => `${USER_TRANSLATIONS.ar.aiConfirmed} (${qty}x "${name}")`,
+    confirmed: (qty: number, name: string) =>
+      `${USER_TRANSLATIONS.ar.aiConfirmed} (${qty}x "${name}")`,
     help: USER_TRANSLATIONS.ar.aiHelp,
-    invalidQty: USER_TRANSLATIONS.ar.aiInvalidQty
-  }
+    invalidQty: USER_TRANSLATIONS.ar.aiInvalidQty,
+  },
 };
 
 const CHAT_FLOW_TRANSLATIONS = {
   en: {
     moreQuestion: USER_TRANSLATIONS.en.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.en.aiAskPayment,
-    doneKeywords: ['done', "that's it", 'no more', 'enough', 'checkout', 'pay', 'ready', 'no thank', 'nothing else', 'no', 'finished', 'stop'],
-    invalidSeating: USER_TRANSLATIONS.en.aiInvalidSeating
+    doneKeywords: [
+      'done',
+      "that's it",
+      'no more',
+      'enough',
+      'checkout',
+      'pay',
+      'ready',
+      'no thank',
+      'nothing else',
+      'no',
+      'finished',
+      'stop',
+    ],
+    invalidSeating: USER_TRANSLATIONS.en.aiInvalidSeating,
   },
   es: {
     moreQuestion: USER_TRANSLATIONS.es.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.es.aiAskPayment,
-    doneKeywords: ['listo', 'ya está', 'suficiente', 'nada más', 'pagar', 'terminar', 'no gracias', 'no', 'nada mas', 'terminado', 'hecho'],
-    invalidSeating: USER_TRANSLATIONS.es.aiInvalidSeating
+    doneKeywords: [
+      'listo',
+      'ya está',
+      'suficiente',
+      'nada más',
+      'pagar',
+      'terminar',
+      'no gracias',
+      'no',
+      'nada mas',
+      'terminado',
+      'hecho',
+    ],
+    invalidSeating: USER_TRANSLATIONS.es.aiInvalidSeating,
   },
   pt: {
     moreQuestion: USER_TRANSLATIONS.pt.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.pt.aiAskPayment,
-    doneKeywords: ['pronto', 'chega', 'suficiente', 'nada mais', 'pagar', 'fechar', 'não obrigado', 'nao', 'não', 'nada mais', 'terminado'],
-    invalidSeating: USER_TRANSLATIONS.pt.aiInvalidSeating
+    doneKeywords: [
+      'pronto',
+      'chega',
+      'suficiente',
+      'nada mais',
+      'pagar',
+      'fechar',
+      'não obrigado',
+      'nao',
+      'não',
+      'nada mais',
+      'terminado',
+    ],
+    invalidSeating: USER_TRANSLATIONS.pt.aiInvalidSeating,
   },
   fr: {
     moreQuestion: USER_TRANSLATIONS.fr.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.fr.aiAskPayment,
-    doneKeywords: ['fini', "c'est tout", 'assez', 'payer', 'terminer', 'non merci', 'non', 'rien d\'autre', 'payer'],
-    invalidSeating: USER_TRANSLATIONS.fr.aiInvalidSeating
+    doneKeywords: [
+      'fini',
+      "c'est tout",
+      'assez',
+      'payer',
+      'terminer',
+      'non merci',
+      'non',
+      "rien d'autre",
+      'payer',
+    ],
+    invalidSeating: USER_TRANSLATIONS.fr.aiInvalidSeating,
   },
   it: {
     moreQuestion: USER_TRANSLATIONS.it.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.it.aiAskPayment,
-    doneKeywords: ['finito', 'a posto', 'abbastanza', 'pagare', 'nient\'altro', 'no grazie', 'no', 'niente altro', 'pronto'],
-    invalidSeating: USER_TRANSLATIONS.it.aiInvalidSeating
+    doneKeywords: [
+      'finito',
+      'a posto',
+      'abbastanza',
+      'pagare',
+      "nient'altro",
+      'no grazie',
+      'no',
+      'niente altro',
+      'pronto',
+    ],
+    invalidSeating: USER_TRANSLATIONS.it.aiInvalidSeating,
   },
   de: {
     moreQuestion: USER_TRANSLATIONS.de.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.de.aiAskPayment,
-    doneKeywords: ['fertig', 'das wars', 'genug', 'bezahlen', 'bestellen', 'nein danke', 'nein', 'fertig', 'stop'],
-    invalidSeating: USER_TRANSLATIONS.de.aiInvalidSeating
+    doneKeywords: [
+      'fertig',
+      'das wars',
+      'genug',
+      'bezahlen',
+      'bestellen',
+      'nein danke',
+      'nein',
+      'fertig',
+      'stop',
+    ],
+    invalidSeating: USER_TRANSLATIONS.de.aiInvalidSeating,
   },
   nl: {
     moreQuestion: USER_TRANSLATIONS.nl.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.nl.aiAskPayment,
-    doneKeywords: ['klaar', 'dat was het', 'niets meer', 'genoeg', 'afrekenen', 'betalen', 'gereed', 'nee bedankt', 'nee', 'klaar', 'stop'],
-    invalidSeating: USER_TRANSLATIONS.nl.aiInvalidSeating
+    doneKeywords: [
+      'klaar',
+      'dat was het',
+      'niets meer',
+      'genoeg',
+      'afrekenen',
+      'betalen',
+      'gereed',
+      'nee bedankt',
+      'nee',
+      'klaar',
+      'stop',
+    ],
+    invalidSeating: USER_TRANSLATIONS.nl.aiInvalidSeating,
   },
   ar: {
     moreQuestion: USER_TRANSLATIONS.ar.aiMoreQuestion,
     askPayment: USER_TRANSLATIONS.ar.aiAskPayment,
     doneKeywords: ['خلاص', 'انتهيت', 'تم', 'يكفي', 'دفع', 'حساب', 'جاهز', 'لا شكرا', 'لا', 'خلصت'],
-    invalidSeating: USER_TRANSLATIONS.ar.aiInvalidSeating
-  }
-};
-
-const getConfirmPasswordLabel = (lang: string): string => {
-  switch (lang) {
-    case 'es': return 'Confirmar Contraseña';
-    case 'fr': return 'Confirmer le mot de passe';
-    case 'de': return 'Passwort bestätigen';
-    case 'it': return 'Conferma Password';
-    case 'pt': return 'Confirmar Senha';
-    case 'nl': return 'Wachtwoord Bevestigen';
-    case 'ar': return 'تأكيد كلمة المرور';
-    default: return 'Confirm Password';
-  }
+    invalidSeating: USER_TRANSLATIONS.ar.aiInvalidSeating,
+  },
 };
 
 export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
@@ -207,7 +306,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [aiTyping, setAiTyping] = useState(false);
-  const [pendingConfirmation, setPendingConfirmation] = useState<{ item: MenuItem; quantity: number; lang: LanguageCode } | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    item: MenuItem;
+    quantity: number;
+    lang: LanguageCode;
+  } | null>(null);
   const [showVisualMenu, setShowVisualMenu] = useState(false);
   // Client-side key is optional and only used as a local-dev fallback. In a
   // production build the Concierge routes through the server-side proxy
@@ -259,22 +362,35 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
 
   // Success Modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lastOrderDetails, setLastOrderDetails] = useState<{ id: string; total: number } | null>(null);
+  const [lastOrderDetails, setLastOrderDetails] = useState<{ id: string; total: number } | null>(
+    null
+  );
 
   // Categories list
-  const categories = ['all', 'Burgers', 'Mexican', 'Noodles', 'Rice Bowls', 'Mains', 'Sides', 'Dessert', 'Beverage'];
+  const categories = [
+    'all',
+    'Burgers',
+    'Mexican',
+    'Noodles',
+    'Rice Bowls',
+    'Mains',
+    'Sides',
+    'Dessert',
+    'Beverage',
+  ];
 
   // Load database values
   const loadData = async () => {
     try {
       const customerUid = db.getCustomerUid();
-      const [fetchedStalls, fetchedItems, fetchedWallet, myOrders, fetchedMatches] = await Promise.all([
-        db.getStalls(),
-        db.getMenuItems(),
-        db.getWallet(customerUid),
-        db.getOrders(customerUid),
-        db.getMatches()
-      ]);
+      const [fetchedStalls, fetchedItems, fetchedWallet, myOrders, fetchedMatches] =
+        await Promise.all([
+          db.getStalls(),
+          db.getMenuItems(),
+          db.getWallet(customerUid),
+          db.getOrders(customerUid),
+          db.getMatches(),
+        ]);
 
       setStalls(fetchedStalls);
       setMenuItems(fetchedItems);
@@ -283,19 +399,19 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       setOrders(myOrders);
 
       // An order can span multiple kiosks; flatten to one card per kiosk slice.
-      const kioskViews: KioskOrderView[] = myOrders.flatMap(o =>
-        Object.values(o.kioskOrders).map(entry => ({
+      const kioskViews: KioskOrderView[] = myOrders.flatMap((o) =>
+        Object.values(o.kioskOrders).map((entry) => ({
           orderId: o.id,
           kioskId: entry.kioskId,
           kioskName: entry.kioskName,
           items: entry.items,
           subtotal: entry.subtotal,
-          status: entry.status
+          status: entry.status,
         }))
       );
       setActiveOrders(kioskViews);
     } catch (e) {
-      console.error("Failed to load customer hub data:", e);
+      console.error('Failed to load customer hub data:', e);
     }
   };
 
@@ -313,14 +429,21 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
 
     if (authMode === 'register' && authPassword !== authConfirmPassword) {
       setAuthError(
-        language === 'es' ? 'Las contraseñas no coinciden.' :
-        language === 'fr' ? 'Les mots de passe ne correspondent pas.' :
-        language === 'de' ? 'Passwörter stimmen nicht überein.' :
-        language === 'it' ? 'Le password non coincidono.' :
-        language === 'pt' ? 'As senhas não coincidem.' :
-        language === 'nl' ? 'Wachtwoorden komen niet overeen.' :
-        language === 'ar' ? 'كلمات المرور غير متطابقة.' :
-        'Passwords do not match.'
+        language === 'es'
+          ? 'Las contraseñas no coinciden.'
+          : language === 'fr'
+            ? 'Les mots de passe ne correspondent pas.'
+            : language === 'de'
+              ? 'Passwörter stimmen nicht überein.'
+              : language === 'it'
+                ? 'Le password non coincidono.'
+                : language === 'pt'
+                  ? 'As senhas não coincidem.'
+                  : language === 'nl'
+                    ? 'Wachtwoorden komen niet overeen.'
+                    : language === 'ar'
+                      ? 'كلمات المرور غير متطابقة.'
+                      : 'Passwords do not match.'
       );
       setAuthLoading(false);
       return;
@@ -329,7 +452,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
     if (auth) {
       try {
         if (authMode === 'login') {
-          const userCredential = await signInWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            authEmail.trim(),
+            authPassword
+          );
           const name = userCredential.user.displayName || userCredential.user.email || 'Customer';
           const email = userCredential.user.email || '';
           await applyCustomerIdentity(userCredential.user.uid, name, email);
@@ -340,7 +467,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             setAuthLoading(false);
             return;
           }
-          const userCredential = await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            authEmail.trim(),
+            authPassword
+          );
           await updateProfile(userCredential.user, { displayName: authDisplayName.trim() });
           const email = userCredential.user.email || '';
           await applyCustomerIdentity(userCredential.user.uid, authDisplayName.trim(), email);
@@ -348,7 +479,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         }
         await loadData();
       } catch (err: any) {
-        console.error("Firebase auth error:", err);
+        console.error('Firebase auth error:', err);
         setAuthError(err.message || 'Authentication failed. Please check your credentials.');
       } finally {
         setAuthLoading(false);
@@ -357,7 +488,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       try {
         const users = JSON.parse(localStorage.getItem('foodcourt_sandbox_users') || '[]');
         if (authMode === 'login') {
-          const found = users.find((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase() && u.password === authPassword);
+          const found = users.find(
+            (u: any) =>
+              u.email.toLowerCase() === authEmail.trim().toLowerCase() &&
+              u.password === authPassword
+          );
           if (found) {
             if (!found.uid) {
               found.uid = crypto.randomUUID();
@@ -376,7 +511,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             setAuthLoading(false);
             return;
           }
-          const exists = users.some((u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase());
+          const exists = users.some(
+            (u: any) => u.email.toLowerCase() === authEmail.trim().toLowerCase()
+          );
           if (exists) {
             setAuthError(USER_TRANSLATIONS[language].authEmailTaken);
             setAuthLoading(false);
@@ -386,7 +523,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
             uid: crypto.randomUUID(),
             email: authEmail.trim(),
             password: authPassword,
-            displayName: authDisplayName.trim()
+            displayName: authDisplayName.trim(),
           };
           users.push(newUser);
           localStorage.setItem('foodcourt_sandbox_users', JSON.stringify(users));
@@ -409,7 +546,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         await signOut(auth);
         setUser(null);
       } catch (err) {
-        console.error("Firebase logout failed:", err);
+        console.error('Firebase logout failed:', err);
       }
     } else {
       localStorage.removeItem('sandbox_logged_in_user');
@@ -478,7 +615,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
         id: `msg-${Date.now()}`,
         sender: 'ai',
         text: TRANSLATIONS[language].greeting,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
       setChatMessages([helloMsg]);
       setPendingConfirmation(null);
@@ -487,10 +624,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
 
   const addToCart = (item: MenuItem, qty: number = 1) => {
     if (!item.isAvailable) return;
-    setCart(prevCart => {
-      const existing = prevCart.find(c => c.item.id === item.id);
+    setCart((prevCart) => {
+      const existing = prevCart.find((c) => c.item.id === item.id);
       if (existing) {
-        return prevCart.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + qty } : c);
+        return prevCart.map((c) =>
+          c.item.id === item.id ? { ...c, quantity: c.quantity + qty } : c
+        );
       }
       return [...prevCart, { item, quantity: qty }];
     });
@@ -499,19 +638,21 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
   };
 
   const updateCartQty = (itemId: string, amount: number) => {
-    setCart(prevCart => {
-      return prevCart.map(c => {
-        if (c.item.id === itemId) {
-          const newQty = c.quantity + amount;
-          return newQty > 0 ? { ...c, quantity: newQty } : null;
-        }
-        return c;
-      }).filter(Boolean) as { item: MenuItem; quantity: number }[];
+    setCart((prevCart) => {
+      return prevCart
+        .map((c) => {
+          if (c.item.id === itemId) {
+            const newQty = c.quantity + amount;
+            return newQty > 0 ? { ...c, quantity: newQty } : null;
+          }
+          return c;
+        })
+        .filter(Boolean) as { item: MenuItem; quantity: number }[];
     });
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart(prevCart => prevCart.filter(c => c.item.id !== itemId));
+    setCart((prevCart) => prevCart.filter((c) => c.item.id !== itemId));
   };
 
   const handleAddFromChatCard = async (item: MenuItem) => {
@@ -522,16 +663,24 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
       // Use Gemini to confirm in the user's language
       try {
         const confirmPrompt = `The user just added 1x "${item.name}" ($${item.price}) to their cart. Confirm this addition and ask if they want to order more or are done. Keep it short (1-2 sentences). Reply in the SAME language the conversation has been in so far.`;
-        const rawResponse = await callGeminiAPI(confirmPrompt, chatMessages, geminiApiKey, language);
-        let parsedText = rawResponse.replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '').replace('[SHOW_CHECKOUT]', '').trim();
+        const rawResponse = await callGeminiAPI(
+          confirmPrompt,
+          chatMessages,
+          geminiApiKey,
+          language
+        );
+        let parsedText = rawResponse
+          .replace(/\[ITEMS:\s*\[[^\]]*\]\]/, '')
+          .replace('[SHOW_CHECKOUT]', '')
+          .trim();
 
         const aiMsg: ChatMessage = {
           id: `msg-${Date.now()}`,
           sender: 'ai',
           text: parsedText,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
-        setChatMessages(prev => [...prev, aiMsg]);
+        setChatMessages((prev) => [...prev, aiMsg]);
         setAiTyping(false);
         return;
       } catch (err) {
@@ -541,31 +690,36 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = () => {
 
     // Fallback for non-Gemini mode
     const lang = language;
-    
+
     setTimeout(() => {
       const confirmText = TRANSLATIONS[lang].confirmed(1, item.name);
       const moreQuestionText = CHAT_FLOW_TRANSLATIONS[lang].moreQuestion;
-      
+
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         sender: 'ai',
         text: `${confirmText} ${moreQuestionText}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
-      setChatMessages(prev => [...prev, aiMsg]);
+
+      setChatMessages((prev) => [...prev, aiMsg]);
       setAiTyping(false);
     }, 600);
   };
 
-  const callGeminiAPI = async (text: string, history: ChatMessage[], apiKey: string, currentLang: string): Promise<string> => {
-    const activeMenuInfo = filteredMenuItems.map(i => ({
+  const callGeminiAPI = async (
+    text: string,
+    history: ChatMessage[],
+    apiKey: string,
+    currentLang: string
+  ): Promise<string> => {
+    const activeMenuInfo = filteredMenuItems.map((i) => ({
       id: i.id,
       name: i.name,
       price: i.price,
       stallName: i.stallName,
       category: i.category,
-      description: i.description
+      description: i.description,
     }));
 
     const systemInstruction = `You are BiteFlow AI Concierge, a stadium food court assistant.
@@ -583,16 +737,16 @@ Rules:
 
     const contents = [];
     const recentHistory = history.slice(-6);
-    recentHistory.forEach(h => {
+    recentHistory.forEach((h) => {
       contents.push({
         role: h.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }]
+        parts: [{ text: h.text }],
       });
     });
 
     contents.push({
       role: 'user',
-      parts: [{ text }]
+      parts: [{ text }],
     });
 
     // Preferred path: the server-side proxy holds the API key. The client sends
@@ -601,7 +755,7 @@ Rules:
       const proxyRes = await fetch(AI_PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents, systemInstruction, userMessage: text })
+        body: JSON.stringify({ contents, systemInstruction, userMessage: text }),
       });
       if (proxyRes.ok) {
         const data = await proxyRes.json();
@@ -624,13 +778,13 @@ Rules:
         body: JSON.stringify({
           contents,
           systemInstruction: {
-            parts: [{ text: systemInstruction }]
+            parts: [{ text: systemInstruction }],
           },
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 500
-          }
-        })
+            maxOutputTokens: 500,
+          },
+        }),
       }
     );
 
@@ -654,7 +808,7 @@ Rules:
       id: `msg-${Date.now()}`,
       sender: 'user',
       text: sanitizedText,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     const updatedHistory = [...chatMessages, userMsg];
@@ -669,9 +823,9 @@ Rules:
         id: `msg-${Date.now() + 1}`,
         sender: 'ai',
         text: USER_TRANSLATIONS[language].aiSafetyGuard,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      setChatMessages(prev => [...prev, guardMsg]);
+      setChatMessages((prev) => [...prev, guardMsg]);
       setAiTyping(false);
       return;
     }
@@ -680,14 +834,19 @@ Rules:
     // or a local client key in development. Falls back to the offline assistant.
     if (aiEnabled) {
       try {
-        const rawResponse = await callGeminiAPI(sanitizedText, chatMessages, geminiApiKey, language);
+        const rawResponse = await callGeminiAPI(
+          sanitizedText,
+          chatMessages,
+          geminiApiKey,
+          language
+        );
 
         // Parse control tags (ADD_TO_CART / ITEMS / SHOW_CHECKOUT) and strip
         // them from the visible text. Only additions that resolve to a real,
         // in-scope menu item are honoured — the model can't inject arbitrary ids.
         const parsed = parseAiResponse(rawResponse, filteredMenuItems);
-        parsed.cartAdditions.forEach(add => {
-          const item = filteredMenuItems.find(i => i.id === add.id);
+        parsed.cartAdditions.forEach((add) => {
+          const item = filteredMenuItems.find((i) => i.id === add.id);
           if (item) addToCart(item, add.quantity);
         });
 
@@ -697,10 +856,10 @@ Rules:
           text: parsed.text,
           timestamp: new Date().toISOString(),
           suggestedItems: parsed.suggestedItems.length > 0 ? parsed.suggestedItems : undefined,
-          showCheckoutAction: parsed.showCheckout
+          showCheckoutAction: parsed.showCheckout,
         };
 
-        setChatMessages(prev => [...prev, aiMsg]);
+        setChatMessages((prev) => [...prev, aiMsg]);
         setAiTyping(false);
         return;
       } catch (err) {
@@ -717,20 +876,32 @@ Rules:
       let shouldShowCheckout = false;
 
       const lower = text.toLowerCase();
-      const isDone = CHAT_FLOW_TRANSLATIONS[lang].doneKeywords.some(keyword => lower.includes(keyword));
+      const isDone = CHAT_FLOW_TRANSLATIONS[lang].doneKeywords.some((keyword) =>
+        lower.includes(keyword)
+      );
 
       if (isDone) {
         aiResponseText = CHAT_FLOW_TRANSLATIONS[lang].askPayment;
         shouldShowCheckout = true;
       } else if (pendingConfirmation) {
-        const isYes = lower.includes('yes') || lower.includes('sí') || lower.includes('si') || lower.includes('sim') || lower.includes('oui') || lower.includes('ok') || lower.includes('confirm');
+        const isYes =
+          lower.includes('yes') ||
+          lower.includes('sí') ||
+          lower.includes('si') ||
+          lower.includes('sim') ||
+          lower.includes('oui') ||
+          lower.includes('ok') ||
+          lower.includes('confirm');
         const qtyMatch = text.match(/\b\d+\b/);
-        
+
         if (isYes || qtyMatch) {
           const qty = qtyMatch ? parseInt(qtyMatch[0]) : pendingConfirmation.quantity;
-          
+
           addToCart(pendingConfirmation.item, qty);
-          const confirmText = TRANSLATIONS[pendingConfirmation.lang].confirmed(qty, pendingConfirmation.item.name);
+          const confirmText = TRANSLATIONS[pendingConfirmation.lang].confirmed(
+            qty,
+            pendingConfirmation.item.name
+          );
           const moreQuestionText = CHAT_FLOW_TRANSLATIONS[pendingConfirmation.lang].moreQuestion;
           aiResponseText = `${confirmText} ${moreQuestionText}`;
           setPendingConfirmation(null);
@@ -770,10 +941,10 @@ Rules:
         text: aiResponseText,
         timestamp: new Date().toISOString(),
         suggestedItems: suggestedItems.length > 0 ? suggestedItems : undefined,
-        showCheckoutAction: shouldShowCheckout
+        showCheckoutAction: shouldShowCheckout,
       };
 
-      setChatMessages(prev => [...prev, aiMsg]);
+      setChatMessages((prev) => [...prev, aiMsg]);
       if (nextPendingConfirmation) {
         setPendingConfirmation(nextPendingConfirmation);
       } else {
@@ -789,7 +960,7 @@ Rules:
   const handleTopUp = async (amount: number) => {
     setLoadingFunds(true);
     setLoadAmount(amount);
-    
+
     // Simulate payment processing delay
     setTimeout(async () => {
       const updatedWallet = await db.loadWalletFunds(db.getCustomerUid(), amount);
@@ -824,7 +995,7 @@ Rules:
     // each tracking its own fulfillment status independently.
     const kioskOrders = groupCartByKiosk(cart);
 
-    const activeMatch = matches.find(m => m.id === selectedMatchId);
+    const activeMatch = matches.find((m) => m.id === selectedMatchId);
 
     const order: Order = {
       id: `ord-${Date.now().toString(36)}-${Math.floor(100 + Math.random() * 900)}`,
@@ -840,20 +1011,22 @@ Rules:
       kioskOrders,
       totalAmount: cartTotal,
       orderTime,
-      notes: checkoutNotes.trim() || undefined
+      notes: checkoutNotes.trim() || undefined,
     };
 
     // Save the order in the database
     await db.placeOrder(order);
 
     // Deduct wallet funds
-    const description = `Multi-kiosk food purchase (${Object.values(kioskOrders).map(k => k.kioskName).join(', ')})`;
+    const description = `Multi-kiosk food purchase (${Object.values(kioskOrders)
+      .map((k) => k.kioskName)
+      .join(', ')})`;
     await db.deductWalletFunds(customerUid, cartTotal, description);
 
     // Record last order for success modal
     setLastOrderDetails({
       id: order.id,
-      total: cartTotal
+      total: cartTotal,
     });
 
     // Reset cart states
@@ -861,270 +1034,111 @@ Rules:
     setCheckoutNotes('');
     setShowCart(false);
     setShowSuccessModal(true);
-    
+
     // Refresh local lists
     await loadData();
   };
 
-  const activeMatch = matches.find(m => m.id === selectedMatchId);
-  const activeMatchStallIds = activeMatch ? (activeMatch.stallIds || []) : [];
-  const availableStalls = stalls.filter(s => activeMatchStallIds.includes(s.id));
+  const activeMatch = matches.find((m) => m.id === selectedMatchId);
+  const activeMatchStallIds = activeMatch ? activeMatch.stallIds || [] : [];
+  const availableStalls = stalls.filter((s) => activeMatchStallIds.includes(s.id));
 
   // Filter items
-  const filteredMenuItems = menuItems.filter(item => {
+  const filteredMenuItems = menuItems.filter((item) => {
     // Only show items from stalls assigned to the active match
     const isStallInMatch = activeMatchStallIds.includes(item.stallId);
     if (!isStallInMatch) return false;
 
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStall = selectedStallId === 'all' || item.stallId === selectedStallId;
-    const matchesCategory = selectedCategory === 'all' || item.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesCategory =
+      selectedCategory === 'all' || item.category.toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesStall && matchesCategory;
   });
 
   // Helper for order progress bar
   const getProgressPercentage = (status: OrderStatus) => {
     switch (status) {
-      case 'pending': return 25;
-      case 'preparing': return 50;
-      case 'ready': return 75;
-      case 'completed': return 100;
-      case 'cancelled': return 0;
-      default: return 0;
+      case 'pending':
+        return 25;
+      case 'preparing':
+        return 50;
+      case 'ready':
+        return 75;
+      case 'completed':
+        return 100;
+      case 'cancelled':
+        return 0;
+      default:
+        return 0;
     }
   };
 
   if (!user) {
     return (
-      <div style={{ maxWidth: '460px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
-          
-          {/* Language Selector in top right */}
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
-              <span style={{ fontSize: '0.8rem' }}>🌐</span>
-              <select
-                value={language}
-                aria-label={USER_TRANSLATIONS[language].selectLanguage}
-                onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
-              >
-                {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
-                  <option key={code} value={code} style={{ color: 'black' }}>
-                    {loc.flag} {loc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <span style={{ fontSize: '3rem' }}>🍔</span>
-            <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
-              Biteflow
-            </h2>
-          </div>
-
-          {/* Tabs for Login / Register */}
-          <div style={{ display: 'flex', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.25rem', marginBottom: '1.5rem' }}>
-            <button 
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: authMode === 'login' ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'transparent',
-                color: authMode === 'login' ? 'white' : 'var(--text-secondary)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              {USER_TRANSLATIONS[language].signInTab}
-            </button>
-            <button 
-              onClick={() => { setAuthMode('register'); setAuthError(''); }}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: authMode === 'register' ? 'linear-gradient(135deg, var(--accent-cyan), #0284c7)' : 'transparent',
-                color: authMode === 'register' ? 'white' : 'var(--text-secondary)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              {USER_TRANSLATIONS[language].signUpTab}
-            </button>
-          </div>
-
-          {authError && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '8px',
-              padding: '0.75rem',
-              color: '#f87171',
-              fontSize: '0.8rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <Info size={14} />
-              <span>{authError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {authMode === 'register' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label htmlFor="auth-display-name" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].displayNameLabel}</label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input
-                    id="auth-display-name"
-                    type="text"
-                    required
-                    placeholder={USER_TRANSLATIONS[language].namePlaceholder}
-                    value={authDisplayName}
-                    onChange={(e) => setAuthDisplayName(e.target.value)}
-                    style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label htmlFor="auth-email" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].emailLabel}</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                <input
-                  id="auth-email"
-                  type="email"
-                  required
-                  placeholder="name@campus.edu"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label htmlFor="auth-password" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].passwordLabel}</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                <input
-                  id="auth-password"
-                  type={showAuthPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 2.5rem 0.6rem 2.5rem', color: 'white', boxSizing: 'border-box' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAuthPassword(!showAuthPassword)}
-                  aria-label={showAuthPassword ? USER_TRANSLATIONS[language].hidePassword : USER_TRANSLATIONS[language].showPassword}
-                  aria-pressed={showAuthPassword}
-                  style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  {showAuthPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-                </button>
-              </div>
-            </div>
-
-            {authMode === 'register' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label htmlFor="auth-confirm-password" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {getConfirmPasswordLabel(language)}
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input
-                    id="auth-confirm-password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={authConfirmPassword}
-                    onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                    style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 2.5rem 0.6rem 2.5rem', color: 'white', boxSizing: 'border-box' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? USER_TRANSLATIONS[language].hidePassword : USER_TRANSLATIONS[language].showPassword}
-                    aria-pressed={showConfirmPassword}
-                    style={{ position: 'absolute', right: '12px', top: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={authLoading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                fontWeight: 600,
-                marginTop: '0.5rem',
-                background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
-                border: 'none',
-                color: 'white',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {authLoading ? (
-                <span>{USER_TRANSLATIONS[language].loading}</span>
-              ) : (
-                <span>{authMode === 'login' ? USER_TRANSLATIONS[language].signInTab : USER_TRANSLATIONS[language].signUpTab}</span>
-              )}
-            </button>
-          </form>
-
-          {!auth && (
-            <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', textAlign: 'center' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                {USER_TRANSLATIONS[language].tipText}
-              </p>
-            </div>
-          )}
-
-        </div>
-      </div>
+      <AuthScreen
+        language={language}
+        setLanguage={setLanguage}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        authEmail={authEmail}
+        setAuthEmail={setAuthEmail}
+        authPassword={authPassword}
+        setAuthPassword={setAuthPassword}
+        authConfirmPassword={authConfirmPassword}
+        setAuthConfirmPassword={setAuthConfirmPassword}
+        authDisplayName={authDisplayName}
+        setAuthDisplayName={setAuthDisplayName}
+        authError={authError}
+        setAuthError={setAuthError}
+        authLoading={authLoading}
+        showAuthPassword={showAuthPassword}
+        setShowAuthPassword={setShowAuthPassword}
+        showConfirmPassword={showConfirmPassword}
+        setShowConfirmPassword={setShowConfirmPassword}
+        handleAuthSubmit={handleAuthSubmit}
+      />
     );
   }
 
   if (user && !hasSubmittedMatchDetails) {
     return (
-      <div style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="glass-panel-glow" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}>
-          
+      <div
+        style={{ maxWidth: '520px', margin: '4rem auto 2rem', padding: '1.5rem', width: '100%' }}
+        dir={language === 'ar' ? 'rtl' : 'ltr'}
+      >
+        <div
+          className="glass-panel-glow"
+          style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative' }}
+        >
           {/* Language Selector in top right */}
           <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                background: 'rgba(3,7,18,0.4)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                padding: '0.3rem 0.5rem',
+              }}
+            >
               <span style={{ fontSize: '0.8rem' }}>🌐</span>
               <select
                 value={language}
                 aria-label={USER_TRANSLATIONS[language].selectLanguage}
                 onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'white',
+                  outline: 'none',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                }}
               >
                 {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
                   <option key={code} value={code} style={{ color: 'black' }}>
@@ -1137,15 +1151,20 @@ Rules:
 
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <span style={{ fontSize: '3rem' }}>{USER_TRANSLATIONS[language].rosterTitle} 🏟️</span>
-            <h2 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}>
+            <h2
+              className="font-display"
+              style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem', color: 'white' }}
+            >
               {USER_TRANSLATIONS[language].selectGameTitle}
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            <p
+              style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}
+            >
               {USER_TRANSLATIONS[language].selectGameDesc}
             </p>
           </div>
 
-          <form 
+          <form
             onSubmit={(e) => {
               e.preventDefault();
               if (!selectedMatchId) {
@@ -1153,24 +1172,51 @@ Rules:
                 return;
               }
               setHasSubmittedMatchDetails(true);
-            }} 
+            }}
             style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <label htmlFor="select-match-field" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label
+                htmlFor="select-match-field"
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
                 {USER_TRANSLATIONS[language].selectMatchLabel}
               </label>
               <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                <Calendar
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '12px',
+                    color: 'var(--text-muted)',
+                  }}
+                />
                 <select
                   id="select-match-field"
                   required
                   value={selectedMatchId}
                   onChange={(e) => setSelectedMatchId(e.target.value)}
-                  style={{ paddingLeft: '2.5rem', width: '100%', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.6rem 0.6rem 2.5rem', color: 'white' }}
+                  style={{
+                    paddingLeft: '2.5rem',
+                    width: '100%',
+                    background: 'rgba(3,7,18,0.4)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.6rem 0.6rem 2.5rem',
+                    color: 'white',
+                  }}
                 >
-                  <option value="" style={{ color: 'black' }}>{USER_TRANSLATIONS[language].selectMatchPlaceholder}</option>
-                  {matches.map(m => (
+                  <option value="" style={{ color: 'black' }}>
+                    {USER_TRANSLATIONS[language].selectMatchPlaceholder}
+                  </option>
+                  {matches.map((m) => (
                     <option key={m.id} value={m.id} style={{ color: 'black' }}>
                       {m.name} ({m.city})
                     </option>
@@ -1179,10 +1225,16 @@ Rules:
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)' }}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                marginTop: '0.5rem',
+                background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)',
+                boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)',
+              }}
             >
               {USER_TRANSLATIONS[language].enterStadiumButton}
             </button>
@@ -1190,9 +1242,16 @@ Rules:
 
           {/* Optional Logout Link */}
           <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-            <button 
-              onClick={handleLogout} 
-              style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}
+            <button
+              onClick={handleLogout}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                textDecoration: 'underline',
+              }}
             >
               {USER_TRANSLATIONS[language].switchAccountLink}
             </button>
@@ -1203,11 +1262,18 @@ Rules:
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', animation: 'slide-up 0.4s ease' }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '2rem',
+        animation: 'slide-up 0.4s ease',
+      }}
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+    >
       {/* Top Welcome Panel */}
-      <div 
-        style={{ 
+      <div
+        style={{
           background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(139, 92, 246, 0.05))',
           border: '1px solid var(--border-color-glow)',
           boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)',
@@ -1217,17 +1283,53 @@ Rules:
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1.5rem'
+          gap: '1.5rem',
         }}
       >
         <div>
           <span style={{ fontSize: '2.5rem' }}>🍔🌮🍟</span>
-          <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Biteflow <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', background: 'rgba(6,182,212,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(6,182,212,0.2)' }}>{selectedMatchId ? USER_TRANSLATIONS[language].liveDeliveryLabel : USER_TRANSLATIONS[language].simulatorLabel}</span>
+          <h1
+            className="font-display"
+            style={{
+              fontSize: '2rem',
+              fontWeight: 800,
+              margin: '0.5rem 0 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            Biteflow{' '}
+            <span
+              style={{
+                color: 'var(--accent-cyan)',
+                fontSize: '0.9rem',
+                background: 'rgba(6,182,212,0.1)',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                border: '1px solid rgba(6,182,212,0.2)',
+              }}
+            >
+              {selectedMatchId
+                ? USER_TRANSLATIONS[language].liveDeliveryLabel
+                : USER_TRANSLATIONS[language].simulatorLabel}
+            </span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {USER_TRANSLATIONS[language].welcomeBack}, <strong>{user?.displayName || db.getCustomerName()}</strong>! {USER_TRANSLATIONS[language].orderDesc}
-            <button 
+          <p
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: '0.95rem',
+              marginTop: '0.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            {USER_TRANSLATIONS[language].welcomeBack},{' '}
+            <strong>{user?.displayName || db.getCustomerName()}</strong>!{' '}
+            {USER_TRANSLATIONS[language].orderDesc}
+            <button
               onClick={handleLogout}
               style={{
                 color: 'var(--accent-red)',
@@ -1242,42 +1344,63 @@ Rules:
                 border: '1px solid rgba(239, 68, 68, 0.2)',
                 background: 'rgba(239, 68, 68, 0.05)',
                 fontWeight: 600,
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
               }}
             >
               <LogOut size={12} /> {USER_TRANSLATIONS[language].logoutButton}
             </button>
           </p>
-          
+
           {selectedMatchId && (
-            <div 
-              style={{ 
-                marginTop: '1.25rem', 
-                background: 'rgba(6, 182, 212, 0.08)', 
-                border: '1px solid rgba(6, 182, 212, 0.3)', 
-                borderRadius: '10px', 
-                padding: '0.6rem 1rem', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+            <div
+              style={{
+                marginTop: '1.25rem',
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.3)',
+                borderRadius: '10px',
+                padding: '0.6rem 1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: '0.75rem',
                 width: '100%',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  fontSize: '0.85rem',
+                }}
+              >
                 <span style={{ fontSize: '1.2rem' }}>🏟️</span>
                 <span>
-                  {USER_TRANSLATIONS[language].watching}: <strong>{matches.find(m => m.id === selectedMatchId)?.name}</strong> 
-                  <span style={{ color: 'var(--text-muted)' }}> | {USER_TRANSLATIONS[language].venue}: <strong>{matches.find(m => m.id === selectedMatchId)?.city}</strong></span>
+                  {USER_TRANSLATIONS[language].watching}:{' '}
+                  <strong>{matches.find((m) => m.id === selectedMatchId)?.name}</strong>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {' '}
+                    | {USER_TRANSLATIONS[language].venue}:{' '}
+                    <strong>{matches.find((m) => m.id === selectedMatchId)?.city}</strong>
+                  </span>
                   {standName && seatNumber ? (
                     <>
-                      <span style={{ color: 'var(--text-muted)' }}> | Stand: <strong>{standName}</strong></span>
-                      <span style={{ color: 'var(--text-muted)' }}> | Seat: <strong>{seatNumber}</strong></span>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {' '}
+                        | Stand: <strong>{standName}</strong>
+                      </span>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {' '}
+                        | Seat: <strong>{seatNumber}</strong>
+                      </span>
                     </>
                   ) : (
-                    <span style={{ color: 'var(--accent-orange)' }}> | ⚠️ {USER_TRANSLATIONS[language].seatingNotSet}</span>
+                    <span style={{ color: 'var(--accent-orange)' }}>
+                      {' '}
+                      | ⚠️ {USER_TRANSLATIONS[language].seatingNotSet}
+                    </span>
                   )}
                 </span>
               </div>
@@ -1293,7 +1416,7 @@ Rules:
                   fontSize: '0.75rem',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 {USER_TRANSLATIONS[language].changeGame}
@@ -1304,13 +1427,30 @@ Rules:
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           {/* Language Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.5rem 0.75rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'rgba(3,7,18,0.4)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px',
+              padding: '0.5rem 0.75rem',
+            }}
+          >
             <span style={{ fontSize: '0.9rem' }}>🌐</span>
             <select
               value={language}
               aria-label={USER_TRANSLATIONS[language].selectLanguage}
               onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                outline: 'none',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
             >
               {Object.entries(CUSTOMER_LOCALES).map(([code, loc]) => (
                 <option key={code} value={code} style={{ color: 'black' }}>
@@ -1321,90 +1461,118 @@ Rules:
           </div>
 
           {/* Quick Wallet Summary widget */}
-          <button 
-            onClick={() => setShowCart(true)} 
-            className="glass-panel" 
-            style={{ 
-              padding: '1rem 1.5rem', 
-              borderRadius: '16px', 
-              display: 'flex', 
-              alignItems: 'center', 
+          <button
+            onClick={() => setShowCart(true)}
+            className="glass-panel"
+            style={{
+              padding: '1rem 1.5rem',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
               gap: '1.25rem',
               textAlign: 'left',
               cursor: 'pointer',
               border: '1px solid rgba(6, 182, 212, 0.3)',
-              background: 'rgba(3, 7, 18, 0.6)'
+              background: 'rgba(3, 7, 18, 0.6)',
             }}
           >
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(6, 182, 212, 0.15)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: 'var(--accent-cyan)' }}>
-            <Wallet size={20} />
-          </div>
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].walletCardLabel}</span>
-            <p className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-green)' }}>
-              ${wallet.balance.toFixed(2)}
-            </p>
-          </div>
-          <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
-        </button>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'rgba(6, 182, 212, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifySelf: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-cyan)',
+              }}
+            >
+              <Wallet size={20} />
+            </div>
+            <div>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {USER_TRANSLATIONS[language].walletCardLabel}
+              </span>
+              <p
+                className="font-display"
+                style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-green)' }}
+              >
+                ${wallet.balance.toFixed(2)}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
+          </button>
+        </div>
       </div>
-    </div>
 
       {/* Tab Navigation */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          gap: '1rem', 
-          borderBottom: '1px solid var(--border-color)', 
-          paddingBottom: '0.75rem', 
+      <div
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '0.75rem',
           marginTop: '1.5rem',
-          marginBottom: '1rem' 
+          marginBottom: '1rem',
         }}
       >
-        <button 
+        <button
           onClick={() => setActiveTab('browse')}
           className={`btn ${activeTab === 'browse' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ 
-            padding: '0.6rem 1.25rem', 
-            borderRadius: '10px', 
-            fontWeight: 600, 
-            display: 'flex', 
-            alignItems: 'center', 
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '10px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
             gap: '0.5rem',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
           }}
         >
           🍔 {USER_TRANSLATIONS[language].browseTab}
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('orders')}
           className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ 
-            padding: '0.6rem 1.25rem', 
-            borderRadius: '10px', 
-            fontWeight: 600, 
-            display: 'flex', 
-            alignItems: 'center', 
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '10px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
             gap: '0.5rem',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
           }}
         >
           📋 {USER_TRANSLATIONS[language].ordersTab}
-          {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
-            <span 
-              style={{ 
-                background: 'var(--accent-red)', 
-                color: 'white', 
-                fontSize: '0.7rem', 
-                padding: '0.15rem 0.45rem', 
-                borderRadius: '8px', 
+          {activeOrders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled').length >
+            0 && (
+            <span
+              style={{
+                background: 'var(--accent-red)',
+                color: 'white',
+                fontSize: '0.7rem',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '8px',
                 fontWeight: 800,
-                boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)'
+                boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
               }}
             >
-              {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length}
+              {
+                activeOrders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled')
+                  .length
+              }
             </span>
           )}
         </button>
@@ -1412,658 +1580,1299 @@ Rules:
 
       {/* Main Grid Content */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-        
         {activeTab === 'browse' ? (
           /* Left side: browsing & active tracker */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Active Orders Status Tracker */}
-          {activeOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length > 0 && (
-            <div className="glass-panel-glow" style={{ padding: '1.5rem', border: '1px solid var(--border-color-glow)' }}>
-              <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Clock size={16} color="var(--accent-cyan)" /> {USER_TRANSLATIONS[language].trackLiveButton}
-              </h3>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {activeOrders
-                  .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
-                  .map(order => (
-                    <div
-                      key={`${order.orderId}-${order.kioskId}`}
-                      style={{
-                        background: 'rgba(3, 7, 18, 0.4)',
-                        padding: '1.25rem',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color)',
-                        animation: 'pulse-soft 5s infinite ease-in-out'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div>
-                          <strong style={{ fontSize: '0.95rem' }}>{order.kioskName}</strong>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>Order #{order.orderId.split('-')[1]}</span>
-                        </div>
-                        <span className={`badge ${
-                          order.status === 'pending' ? 'badge-warning' :
-                          order.status === 'preparing' ? 'badge-info' :
-                          'badge-success'
-                        }`}>
-                          {order.status === 'ready' ? USER_TRANSLATIONS[language].progressStepReady : order.status === 'pending' ? USER_TRANSLATIONS[language].progressStepReceived : USER_TRANSLATIONS[language].progressStepPreparing}
-                        </span>
-                      </div>
-
-                      {/* Items details */}
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                        {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                      </p>
-
-                      {/* Progress visual bar */}
-                      <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', position: 'relative', marginBottom: '0.5rem' }}>
-                        <div 
-                          style={{ 
-                            height: '100%', 
-                            width: `${getProgressPercentage(order.status)}%`, 
-                            background: order.status === 'ready' ? 'var(--accent-green)' : 'var(--accent-cyan)',
-                            borderRadius: '3px',
-                            transition: 'width 0.4s ease'
-                          }} 
-                        />
-                      </div>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span style={{ color: order.status === 'pending' ? 'var(--accent-orange)' : '' }}>{USER_TRANSLATIONS[language].progressStepReceived}</span>
-                        <span style={{ color: order.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>{USER_TRANSLATIONS[language].progressStepPreparing}</span>
-                        <span style={{ color: order.status === 'ready' ? 'var(--accent-green)' : '' }}>{USER_TRANSLATIONS[language].progressStepReady}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Concierge Chat Console */}
-          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '520px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div>
-                <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                  <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
-                  {USER_TRANSLATIONS[language].askLanguagePromptDesc}
-                </p>
-              </div>
-              
-              <button
-                onClick={() => setShowVisualMenu(!showVisualMenu)}
-                className="btn btn-secondary"
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+            {/* Active Orders Status Tracker */}
+            {activeOrders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled')
+              .length > 0 && (
+              <div
+                className="glass-panel-glow"
+                style={{ padding: '1.5rem', border: '1px solid var(--border-color-glow)' }}
               >
-                {showVisualMenu ? `💬 ${USER_TRANSLATIONS[language].showAiChatOnlyButton}` : `🍽️ ${USER_TRANSLATIONS[language].showVisualGridButton}`}
-              </button>
-            </div>
-
-            {!showVisualMenu ? (
-              <>
-                {/* Chat Message Thread */}
-                <div
-                  role="log"
-                  aria-live="polite"
-                  aria-atomic="false"
-                  aria-label={USER_TRANSLATIONS[language].aiConciergeTitle}
+                <h3
+                  className="font-display"
                   style={{
-                  flex: 1,
-                  maxHeight: '380px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  padding: '0.5rem',
-                  background: 'rgba(3, 7, 18, 0.2)',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-color)'
-                }}>
-                  {chatMessages.map((msg) => (
-                    <div 
-                      key={msg.id} 
-                      style={{ 
-                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '85%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.35rem'
-                      }}
-                    >
-                      <div 
+                    fontSize: '1.15rem',
+                    fontWeight: 700,
+                    marginBottom: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <Clock size={16} color="var(--accent-cyan)" />{' '}
+                  {USER_TRANSLATIONS[language].trackLiveButton}
+                </h3>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {activeOrders
+                    .filter((o) => o.status !== 'completed' && o.status !== 'cancelled')
+                    .map((order) => (
+                      <div
+                        key={`${order.orderId}-${order.kioskId}`}
                         style={{
-                          background: msg.sender === 'user' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'rgba(255, 255, 255, 0.03)',
-                          border: msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
-                          color: 'white',
-                          padding: '0.75rem 1rem',
-                          borderRadius: msg.sender === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                          fontSize: '0.9rem',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                          background: 'rgba(3, 7, 18, 0.4)',
+                          padding: '1.25rem',
+                          borderRadius: '12px',
+                          border: '1px solid var(--border-color)',
+                          animation: 'pulse-soft 5s infinite ease-in-out',
                         }}
                       >
-                        {msg.text}
-                      </div>
-
-                      {/* Attached/Suggested menu items rendered as interactive cards */}
-                      {msg.suggestedItems && msg.suggestedItems.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
-                          {msg.suggestedItems.map((item) => (
-                            <div 
-                              key={item.id} 
-                              style={{ 
-                                display: 'flex', 
-                                gap: '0.75rem', 
-                                background: 'rgba(3,7,18,0.5)', 
-                                border: '1px solid rgba(6, 182, 212, 0.2)', 
-                                borderRadius: '10px', 
-                                padding: '0.6rem',
-                                alignItems: 'center' 
-                              }}
-                            >
-                              <img 
-                                src={item.imageUrl} 
-                                alt={item.name} 
-                                style={{ width: '45px', height: '45px', borderRadius: '6px', objectFit: 'cover' }}
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200';
-                                }}
-                              />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <h5 style={{ fontWeight: 600, fontSize: '0.85rem', color: 'white', margin: 0 }}>{item.name}</h5>
-                                  <strong style={{ fontSize: '0.85rem', color: 'var(--accent-green)' }}>${item.price.toFixed(2)}</strong>
-                                </div>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>from {item.stallName}</span>
-                              </div>
-                              {(() => {
-                                const cartEntry = cart.find(c => c.item.id === item.id);
-                                if (cartEntry) {
-                                  return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                      <button
-                                        onClick={() => {
-                                          if (cartEntry.quantity <= 1) {
-                                            removeFromCart(item.id);
-                                          } else {
-                                            updateCartQty(item.id, -1);
-                                          }
-                                        }}
-                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
-                                      >
-                                        {cartEntry.quantity <= 1 ? '🗑' : '−'}
-                                      </button>
-                                      <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>
-                                        {cartEntry.quantity}
-                                      </span>
-                                      <button
-                                        onClick={() => updateCartQty(item.id, 1)}
-                                        style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.15)', color: 'var(--accent-cyan)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    onClick={() => handleAddFromChatCard(item)}
-                                    className="btn btn-primary"
-                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '6px', whiteSpace: 'nowrap' }}
-                                  >
-                                    <Plus size={10} /> Add
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {msg.showCheckoutAction && cart.length > 0 && (
-                        <div 
-                          style={{ 
-                            marginTop: '0.5rem', 
-                            padding: '1.25rem', 
-                            background: 'rgba(3, 7, 18, 0.75)', 
-                            border: '2px solid var(--accent-cyan)', 
-                            borderRadius: '16px',
+                        <div
+                          style={{
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.75rem',
-                            boxShadow: '0 8px 32px rgba(6, 182, 212, 0.15)',
-                            backdropFilter: 'blur(10px)',
-                            textAlign: 'left'
+                            justifyContent: 'space-between',
+                            marginBottom: '0.75rem',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem',
                           }}
                         >
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', display: 'block' }}>
-                            🛒 Checkout Order Summary
+                          <div>
+                            <strong style={{ fontSize: '0.95rem' }}>{order.kioskName}</strong>
+                            <span
+                              style={{
+                                fontSize: '0.8rem',
+                                color: 'var(--text-secondary)',
+                                marginLeft: '0.5rem',
+                              }}
+                            >
+                              Order #{order.orderId.split('-')[1]}
+                            </span>
+                          </div>
+                          <span
+                            className={`badge ${
+                              order.status === 'pending'
+                                ? 'badge-warning'
+                                : order.status === 'preparing'
+                                  ? 'badge-info'
+                                  : 'badge-success'
+                            }`}
+                          >
+                            {order.status === 'ready'
+                              ? USER_TRANSLATIONS[language].progressStepReady
+                              : order.status === 'pending'
+                                ? USER_TRANSLATIONS[language].progressStepReceived
+                                : USER_TRANSLATIONS[language].progressStepPreparing}
                           </span>
-                          
-                          {/* Cart items list */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {cart.map(({ item, quantity }) => (
-                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                                <span>{quantity}x {item.name}</span>
-                                <span style={{ fontWeight: 600 }}>${(item.price * quantity).toFixed(2)}</span>
+                        </div>
+
+                        {/* Items details */}
+                        <p
+                          style={{
+                            fontSize: '0.85rem',
+                            color: 'var(--text-secondary)',
+                            marginBottom: '0.75rem',
+                          }}
+                        >
+                          {order.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
+                        </p>
+
+                        {/* Progress visual bar */}
+                        <div
+                          style={{
+                            height: '6px',
+                            background: 'rgba(255,255,255,0.05)',
+                            borderRadius: '3px',
+                            position: 'relative',
+                            marginBottom: '0.5rem',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${getProgressPercentage(order.status)}%`,
+                              background:
+                                order.status === 'ready'
+                                  ? 'var(--accent-green)'
+                                  : 'var(--accent-cyan)',
+                              borderRadius: '3px',
+                              transition: 'width 0.4s ease',
+                            }}
+                          />
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: order.status === 'pending' ? 'var(--accent-orange)' : '',
+                            }}
+                          >
+                            {USER_TRANSLATIONS[language].progressStepReceived}
+                          </span>
+                          <span
+                            style={{
+                              color: order.status === 'preparing' ? 'var(--accent-cyan)' : '',
+                            }}
+                          >
+                            {USER_TRANSLATIONS[language].progressStepPreparing}
+                          </span>
+                          <span
+                            style={{ color: order.status === 'ready' ? 'var(--accent-green)' : '' }}
+                          >
+                            {USER_TRANSLATIONS[language].progressStepReady}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI Concierge Chat Console */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                minHeight: '520px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--border-color)',
+                  paddingBottom: '0.75rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}
+              >
+                <div>
+                  <h3
+                    className="font-display"
+                    style={{
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      margin: 0,
+                    }}
+                  >
+                    <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
+                  </h3>
+                  <p
+                    style={{
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.8rem',
+                      margin: '0.2rem 0 0',
+                    }}
+                  >
+                    {USER_TRANSLATIONS[language].askLanguagePromptDesc}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowVisualMenu(!showVisualMenu)}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                >
+                  {showVisualMenu
+                    ? `💬 ${USER_TRANSLATIONS[language].showAiChatOnlyButton}`
+                    : `🍽️ ${USER_TRANSLATIONS[language].showVisualGridButton}`}
+                </button>
+              </div>
+
+              {!showVisualMenu ? (
+                <>
+                  {/* Chat Message Thread */}
+                  <div
+                    role="log"
+                    aria-live="polite"
+                    aria-atomic="false"
+                    aria-label={USER_TRANSLATIONS[language].aiConciergeTitle}
+                    style={{
+                      flex: 1,
+                      maxHeight: '380px',
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      padding: '0.5rem',
+                      background: 'rgba(3, 7, 18, 0.2)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border-color)',
+                    }}
+                  >
+                    {chatMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        style={{
+                          alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                          maxWidth: '85%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <div
+                          style={{
+                            background:
+                              msg.sender === 'user'
+                                ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
+                                : 'rgba(255, 255, 255, 0.03)',
+                            border:
+                              msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
+                            color: 'white',
+                            padding: '0.75rem 1rem',
+                            borderRadius:
+                              msg.sender === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                            fontSize: '0.9rem',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          }}
+                        >
+                          {msg.text}
+                        </div>
+
+                        {/* Attached/Suggested menu items rendered as interactive cards */}
+                        {msg.suggestedItems && msg.suggestedItems.length > 0 && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              marginTop: '0.25rem',
+                            }}
+                          >
+                            {msg.suggestedItems.map((item) => (
+                              <div
+                                key={item.id}
+                                style={{
+                                  display: 'flex',
+                                  gap: '0.75rem',
+                                  background: 'rgba(3,7,18,0.5)',
+                                  border: '1px solid rgba(6, 182, 212, 0.2)',
+                                  borderRadius: '10px',
+                                  padding: '0.6rem',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  style={{
+                                    width: '45px',
+                                    height: '45px',
+                                    borderRadius: '6px',
+                                    objectFit: 'cover',
+                                  }}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200';
+                                  }}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                    }}
+                                  >
+                                    <h5
+                                      style={{
+                                        fontWeight: 600,
+                                        fontSize: '0.85rem',
+                                        color: 'white',
+                                        margin: 0,
+                                      }}
+                                    >
+                                      {item.name}
+                                    </h5>
+                                    <strong
+                                      style={{ fontSize: '0.85rem', color: 'var(--accent-green)' }}
+                                    >
+                                      ${item.price.toFixed(2)}
+                                    </strong>
+                                  </div>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                    from {item.stallName}
+                                  </span>
+                                </div>
+                                {(() => {
+                                  const cartEntry = cart.find((c) => c.item.id === item.id);
+                                  if (cartEntry) {
+                                    return (
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.3rem',
+                                        }}
+                                      >
+                                        <button
+                                          onClick={() => {
+                                            if (cartEntry.quantity <= 1) {
+                                              removeFromCart(item.id);
+                                            } else {
+                                              updateCartQty(item.id, -1);
+                                            }
+                                          }}
+                                          style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '6px',
+                                            border: '1px solid rgba(239,68,68,0.3)',
+                                            background: 'rgba(239,68,68,0.1)',
+                                            color: '#f87171',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 700,
+                                            padding: 0,
+                                          }}
+                                        >
+                                          {cartEntry.quantity <= 1 ? '🗑' : '−'}
+                                        </button>
+                                        <span
+                                          style={{
+                                            minWidth: '20px',
+                                            textAlign: 'center',
+                                            fontWeight: 700,
+                                            fontSize: '0.8rem',
+                                            color: 'white',
+                                          }}
+                                        >
+                                          {cartEntry.quantity}
+                                        </span>
+                                        <button
+                                          onClick={() => updateCartQty(item.id, 1)}
+                                          style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '6px',
+                                            border: '1px solid rgba(6,182,212,0.3)',
+                                            background: 'rgba(6,182,212,0.15)',
+                                            color: 'var(--accent-cyan)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 700,
+                                            padding: 0,
+                                          }}
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      onClick={() => handleAddFromChatCard(item)}
+                                      className="btn btn-primary"
+                                      style={{
+                                        padding: '0.3rem 0.6rem',
+                                        fontSize: '0.7rem',
+                                        borderRadius: '6px',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      <Plus size={10} /> Add
+                                    </button>
+                                  );
+                                })()}
                               </div>
                             ))}
                           </div>
-                          
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 700, borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '0.5rem', color: 'white' }}>
-                            <span>Total:</span>
-                            <span style={{ color: 'var(--accent-green)' }}>${cartTotal.toFixed(2)}</span>
-                          </div>
+                        )}
 
-                          {/* Seating Form fields directly in the chat bubble */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
-                            <div>
-                              <label htmlFor="chat-stand-input" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
-                                Stand / Section
-                              </label>
-                              <input
-                                id="chat-stand-input"
-                                type="text"
-                                required
-                                placeholder={USER_TRANSLATIONS[language].standPlaceholder}
-                                value={standName}
-                                onChange={(e) => setStandName(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
-                              />
-                            </div>
-                            
-                            <div>
-                              <label htmlFor="chat-seat-input" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
-                                Seat Number
-                              </label>
-                              <input
-                                id="chat-seat-input"
-                                type="text"
-                                required
-                                placeholder={USER_TRANSLATIONS[language].seatPlaceholder}
-                                value={seatNumber}
-                                onChange={(e) => setSeatNumber(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(3,7,18,0.5)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.5rem', color: 'white', fontSize: '0.75rem', boxSizing: 'border-box' }}
-                              />
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTempStandName(standName || 'West Stand');
-                              setTempSeatNumber(seatNumber || 'A-1');
-                              setShowSeatMapModal(true);
-                            }}
-                            className="btn btn-secondary"
+                        {msg.showCheckoutAction && cart.length > 0 && (
+                          <div
                             style={{
-                              width: '100%',
-                              padding: '0.4rem',
-                              fontSize: '0.7rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.3rem',
-                              background: 'rgba(6, 182, 212, 0.08)',
-                              border: '1px solid rgba(6, 182, 212, 0.3)',
-                              color: 'var(--accent-cyan)',
-                              cursor: 'pointer',
-                              borderRadius: '6px',
                               marginTop: '0.5rem',
-                              marginBottom: '0.5rem'
+                              padding: '1.25rem',
+                              background: 'rgba(3, 7, 18, 0.75)',
+                              border: '2px solid var(--accent-cyan)',
+                              borderRadius: '16px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.75rem',
+                              boxShadow: '0 8px 32px rgba(6, 182, 212, 0.15)',
+                              backdropFilter: 'blur(10px)',
+                              textAlign: 'left',
                             }}
                           >
-                            🗺️ {language === 'es' ? 'Seleccionar Asiento en el Mapa' : language === 'fr' ? 'Choisir sur le plan' : language === 'de' ? 'Sitzplan öffnen' : language === 'it' ? 'Mappa dei posti' : language === 'pt' ? 'Ver no mapa' : language === 'nl' ? 'Sitzplan openen' : language === 'ar' ? 'اختر مقعدك على الخريطة' : 'Select Seat on Map'}
-                          </button>
+                            <span
+                              style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                color: 'var(--accent-cyan)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                paddingBottom: '0.4rem',
+                                display: 'block',
+                              }}
+                            >
+                              🛒 Checkout Order Summary
+                            </span>
 
-                          {wallet.balance < cartTotal && (
-                            <div style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.75rem', color: '#f87171' }}>
-                              Insufficient wallet balance! Top up in the header widget.
+                            {/* Cart items list */}
+                            <div
+                              style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+                            >
+                              {cart.map(({ item, quantity }) => (
+                                <div
+                                  key={item.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    fontSize: '0.85rem',
+                                    color: 'var(--text-primary)',
+                                  }}
+                                >
+                                  <span>
+                                    {quantity}x {item.name}
+                                  </span>
+                                  <span style={{ fontWeight: 600 }}>
+                                    ${(item.price * quantity).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          )}
 
-                          <button
-                            onClick={handleCheckout}
-                            disabled={wallet.balance < cartTotal}
-                            className="btn btn-primary"
-                            style={{ 
-                              width: '100%', 
-                              padding: '0.6rem', 
-                              fontSize: '0.85rem', 
-                              fontWeight: 700, 
-                              background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)', 
-                              boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)',
-                              opacity: wallet.balance < cartTotal ? 0.5 : 1,
-                              cursor: wallet.balance < cartTotal ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            💳 Proceed with Payment (${cartTotal.toFixed(2)})
-                          </button>
-                        </div>
-                      )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
+                                borderTop: '1px dashed rgba(255,255,255,0.1)',
+                                paddingTop: '0.5rem',
+                                color: 'white',
+                              }}
+                            >
+                              <span>Total:</span>
+                              <span style={{ color: 'var(--accent-green)' }}>
+                                ${cartTotal.toFixed(2)}
+                              </span>
+                            </div>
 
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {/* Seating Form fields directly in the chat bubble */}
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '0.5rem',
+                                marginTop: '0.25rem',
+                              }}
+                            >
+                              <div>
+                                <label
+                                  htmlFor="chat-stand-input"
+                                  style={{
+                                    display: 'block',
+                                    fontSize: '0.65rem',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '0.15rem',
+                                  }}
+                                >
+                                  Stand / Section
+                                </label>
+                                <input
+                                  id="chat-stand-input"
+                                  type="text"
+                                  required
+                                  placeholder={USER_TRANSLATIONS[language].standPlaceholder}
+                                  value={standName}
+                                  onChange={(e) => setStandName(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    background: 'rgba(3,7,18,0.5)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.5rem',
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    boxSizing: 'border-box',
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label
+                                  htmlFor="chat-seat-input"
+                                  style={{
+                                    display: 'block',
+                                    fontSize: '0.65rem',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '0.15rem',
+                                  }}
+                                >
+                                  Seat Number
+                                </label>
+                                <input
+                                  id="chat-seat-input"
+                                  type="text"
+                                  required
+                                  placeholder={USER_TRANSLATIONS[language].seatPlaceholder}
+                                  value={seatNumber}
+                                  onChange={(e) => setSeatNumber(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    background: 'rgba(3,7,18,0.5)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.5rem',
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    boxSizing: 'border-box',
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTempStandName(standName || 'West Stand');
+                                setTempSeatNumber(seatNumber || 'A-1');
+                                setShowSeatMapModal(true);
+                              }}
+                              className="btn btn-secondary"
+                              style={{
+                                width: '100%',
+                                padding: '0.4rem',
+                                fontSize: '0.7rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.3rem',
+                                background: 'rgba(6, 182, 212, 0.08)',
+                                border: '1px solid rgba(6, 182, 212, 0.3)',
+                                color: 'var(--accent-cyan)',
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                marginTop: '0.5rem',
+                                marginBottom: '0.5rem',
+                              }}
+                            >
+                              🗺️{' '}
+                              {language === 'es'
+                                ? 'Seleccionar Asiento en el Mapa'
+                                : language === 'fr'
+                                  ? 'Choisir sur le plan'
+                                  : language === 'de'
+                                    ? 'Sitzplan öffnen'
+                                    : language === 'it'
+                                      ? 'Mappa dei posti'
+                                      : language === 'pt'
+                                        ? 'Ver no mapa'
+                                        : language === 'nl'
+                                          ? 'Sitzplan openen'
+                                          : language === 'ar'
+                                            ? 'اختر مقعدك على الخريطة'
+                                            : 'Select Seat on Map'}
+                            </button>
+
+                            {wallet.balance < cartTotal && (
+                              <div
+                                style={{
+                                  padding: '0.5rem',
+                                  background: 'rgba(239, 68, 68, 0.05)',
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  color: '#f87171',
+                                }}
+                              >
+                                Insufficient wallet balance! Top up in the header widget.
+                              </div>
+                            )}
+
+                            <button
+                              onClick={handleCheckout}
+                              disabled={wallet.balance < cartTotal}
+                              className="btn btn-primary"
+                              style={{
+                                width: '100%',
+                                padding: '0.6rem',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                background: 'linear-gradient(135deg, var(--accent-cyan), #0284c7)',
+                                boxShadow: '0 4px 12px rgba(6, 182, 212, 0.2)',
+                                opacity: wallet.balance < cartTotal ? 0.5 : 1,
+                                cursor: wallet.balance < cartTotal ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              💳 Proceed with Payment (${cartTotal.toFixed(2)})
+                            </button>
+                          </div>
+                        )}
+
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            color: 'var(--text-muted)',
+                            alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                          }}
+                        >
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    ))}
+
+                    {aiTyping && (
+                      <div
+                        style={{
+                          alignSelf: 'flex-start',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-secondary)',
+                          padding: '0.6rem 1rem',
+                          borderRadius: '16px 16px 16px 2px',
+                          fontSize: '0.85rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <span
+                          className="dot-typing"
+                          style={{
+                            display: 'inline-block',
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'currentColor',
+                            animation: 'pulse 1.3s infinite alternate',
+                          }}
+                        ></span>
+                        <span
+                          className="dot-typing"
+                          style={{
+                            display: 'inline-block',
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'currentColor',
+                            animation: 'pulse 1.3s infinite alternate',
+                            animationDelay: '0.2s',
+                          }}
+                        ></span>
+                        <span
+                          className="dot-typing"
+                          style={{
+                            display: 'inline-block',
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'currentColor',
+                            animation: 'pulse 1.3s infinite alternate',
+                            animationDelay: '0.4s',
+                          }}
+                        ></span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pre-suggested starters row */}
+                  {chatMessages.length === 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <span
+                        style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}
+                      >
+                        Suggested prompts:
                       </span>
-                    </div>
-                  ))}
-                  
-                  {aiTyping && (
-                    <div style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.6rem 1rem', borderRadius: '16px 16px 16px 2px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate' }}></span>
-                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate', animationDelay: '0.2s' }}></span>
-                      <span className="dot-typing" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.3s infinite alternate', animationDelay: '0.4s' }}></span>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSendMessage('I want to order a taco')}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '15px',
+                          }}
+                        >
+                          🇺🇸 taco
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendMessage('Quiero una hamburguesa')}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '15px',
+                          }}
+                        >
+                          🇪🇸 hamburguesa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSendMessage('Gostaria de ver o cardápio de hambúrguer')
+                          }
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '15px',
+                          }}
+                        >
+                          🇵🇹 hambúrguer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendMessage('Je veux commander des nouilles')}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '15px',
+                          }}
+                        >
+                          🇫🇷 nouilles
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendMessage('Vorrei ordinare un dolce')}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '15px',
+                          }}
+                        >
+                          🇮🇹 dolce
+                        </button>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* Pre-suggested starters row */}
-                {chatMessages.length === 1 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Suggested prompts:</span>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => handleSendMessage("I want to order a taco")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇺🇸 taco</button>
-                      <button type="button" onClick={() => handleSendMessage("Quiero una hamburguesa")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇪🇸 hamburguesa</button>
-                      <button type="button" onClick={() => handleSendMessage("Gostaria de ver o cardápio de hambúrguer")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇵🇹 hambúrguer</button>
-                      <button type="button" onClick={() => handleSendMessage("Je veux commander des nouilles")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇫🇷 nouilles</button>
-                      <button type="button" onClick={() => handleSendMessage("Vorrei ordinare un dolce")} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '15px' }}>🇮🇹 dolce</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Chat Input row */}
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }}
-                  style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', alignItems: 'center' }}
-                >
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder={USER_TRANSLATIONS[language].chatPlaceholder}
-                    aria-label={USER_TRANSLATIONS[language].chatPlaceholder}
-                    className="input-field"
-                    style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
-                  />
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {USER_TRANSLATIONS[language].sendButton || 'Send'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCart(true)}
-                    aria-label={`${USER_TRANSLATIONS[language].cartTitle} (${cart.reduce((s, c) => s + c.quantity, 0)})`}
+                  {/* Chat Input row */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
                     style={{
-                      position: 'relative', 
-                      padding: '0.6rem', 
-                      borderRadius: '10px', 
-                      border: cart.length > 0 ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)', 
-                      background: cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)', 
-                      color: cart.length > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)', 
-                      cursor: 'pointer',
                       display: 'flex',
+                      gap: '0.5rem',
+                      borderTop: '1px solid var(--border-color)',
+                      paddingTop: '0.75rem',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <ShoppingBag size={18} />
-                    {cart.length > 0 && (
-                      <span style={{ 
-                        position: 'absolute', 
-                        top: '-6px', 
-                        right: '-6px', 
-                        background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
-                        color: 'white', 
-                        fontSize: '0.6rem', 
-                        fontWeight: 800, 
-                        width: '18px', 
-                        height: '18px', 
-                        borderRadius: '50%', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 6px rgba(239,68,68,0.4)'
-                      }}>
-                        {cart.reduce((sum, c) => sum + c.quantity, 0)}
-                      </span>
-                    )}
-                  </button>
-                </form>
-              </>
-            ) : (
-              /* Catalog: Search, Filter, Browse */
-              <div>
-                {/* Filters Row */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    {/* Search Bar */}
-                    <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-                      <label htmlFor="search-foods-input" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
-                        {USER_TRANSLATIONS[language].searchPlaceholder}
-                      </label>
-                      <Search size={18} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                      <input
-                        id="search-foods-input"
-                        type="search"
-                        className="input-field"
-                        placeholder={USER_TRANSLATIONS[language].searchPlaceholder}
-                        aria-label={USER_TRANSLATIONS[language].searchPlaceholder}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ paddingLeft: '2.5rem' }}
-                      />
-                    </div>
-
-                    {/* Stall filter dropdown */}
-                    <div style={{ width: '200px' }}>
-                      <select
-                        className="input-field"
-                        aria-label={USER_TRANSLATIONS[language].filterByStall}
-                        value={selectedStallId}
-                        onChange={(e) => setSelectedStallId(e.target.value)}
-                      >
-                        <option value="all">🏪 {USER_TRANSLATIONS[language].allFoodStallsOption}</option>
-                        {availableStalls.map(s => (
-                          <option key={s.id} value={s.id}>{s.logoUrl} {s.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Cart toggle button in visual menu */}
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder={USER_TRANSLATIONS[language].chatPlaceholder}
+                      aria-label={USER_TRANSLATIONS[language].chatPlaceholder}
+                      className="input-field"
+                      style={{ flex: 1, background: 'rgba(3,7,18,0.4)' }}
+                    />
                     <button
-                      onClick={() => setShowCart(!showCart)}
-                      className="btn"
-                      aria-label={USER_TRANSLATIONS[language].cartTitle}
-                      style={{ 
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{
+                        padding: '0.6rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
+                    >
+                      {USER_TRANSLATIONS[language].sendButton || 'Send'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCart(true)}
+                      aria-label={`${USER_TRANSLATIONS[language].cartTitle} (${cart.reduce((s, c) => s + c.quantity, 0)})`}
+                      style={{
                         position: 'relative',
-                        padding: '0.6rem 1.25rem', 
-                        borderRadius: '12px', 
-                        border: cart.length > 0 ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)', 
-                        background: cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)', 
-                        color: cart.length > 0 ? 'var(--accent-cyan)' : 'white', 
+                        padding: '0.6rem',
+                        borderRadius: '10px',
+                        border:
+                          cart.length > 0
+                            ? '2px solid var(--accent-cyan)'
+                            : '1px solid var(--border-color)',
+                        background:
+                          cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)',
+                        color: cart.length > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
+                        justifyContent: 'center',
                         transition: 'all 0.2s ease',
-                        minWidth: '100px'
                       }}
                     >
                       <ShoppingBag size={18} />
-                      <span>{USER_TRANSLATIONS[language].cart || 'Cart'}</span>
                       {cart.length > 0 && (
-                        <span style={{ 
-                          background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
-                          color: 'white', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 800, 
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '9999px',
-                          boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                            color: 'white',
+                            fontSize: '0.6rem',
+                            fontWeight: 800,
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+                          }}
+                        >
                           {cart.reduce((sum, c) => sum + c.quantity, 0)}
                         </span>
                       )}
                     </button>
-                  </div>
+                  </form>
+                </>
+              ) : (
+                /* Catalog: Search, Filter, Browse */
+                <div>
+                  {/* Filters Row */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1.25rem',
+                      marginBottom: '2rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      {/* Search Bar */}
+                      <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                        <label
+                          htmlFor="search-foods-input"
+                          style={{
+                            position: 'absolute',
+                            width: '1px',
+                            height: '1px',
+                            padding: 0,
+                            margin: '-1px',
+                            overflow: 'hidden',
+                            clip: 'rect(0, 0, 0, 0)',
+                            whiteSpace: 'nowrap',
+                            border: 0,
+                          }}
+                        >
+                          {USER_TRANSLATIONS[language].searchPlaceholder}
+                        </label>
+                        <Search
+                          size={18}
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            left: '12px',
+                            top: '12px',
+                            color: 'var(--text-muted)',
+                          }}
+                        />
+                        <input
+                          id="search-foods-input"
+                          type="search"
+                          className="input-field"
+                          placeholder={USER_TRANSLATIONS[language].searchPlaceholder}
+                          aria-label={USER_TRANSLATIONS[language].searchPlaceholder}
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          style={{ paddingLeft: '2.5rem' }}
+                        />
+                      </div>
 
-                  {/* Category pills */}
-                  <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                    {categories.map(cat => (
+                      {/* Stall filter dropdown */}
+                      <div style={{ width: '200px' }}>
+                        <select
+                          className="input-field"
+                          aria-label={USER_TRANSLATIONS[language].filterByStall}
+                          value={selectedStallId}
+                          onChange={(e) => setSelectedStallId(e.target.value)}
+                        >
+                          <option value="all">
+                            🏪 {USER_TRANSLATIONS[language].allFoodStallsOption}
+                          </option>
+                          {availableStalls.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.logoUrl} {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Cart toggle button in visual menu */}
                       <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ 
-                          padding: '0.35rem 0.85rem', 
-                          fontSize: '0.8rem',
-                          textTransform: 'capitalize',
-                          borderRadius: '20px'
+                        onClick={() => setShowCart(!showCart)}
+                        className="btn"
+                        aria-label={USER_TRANSLATIONS[language].cartTitle}
+                        style={{
+                          position: 'relative',
+                          padding: '0.6rem 1.25rem',
+                          borderRadius: '12px',
+                          border:
+                            cart.length > 0
+                              ? '2px solid var(--accent-cyan)'
+                              : '1px solid var(--border-color)',
+                          background:
+                            cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)',
+                          color: cart.length > 0 ? 'var(--accent-cyan)' : 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          transition: 'all 0.2s ease',
+                          minWidth: '100px',
                         }}
                       >
-                        {cat === 'all' ? `🍽️ ${USER_TRANSLATIONS[language].allCategoriesTab}` : cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Menu Items Grid */}
-                {filteredMenuItems.length === 0 ? (
-                  <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                    <Info size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>{USER_TRANSLATIONS[language].noDishesFoundHeader}</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      {USER_TRANSLATIONS[language].tryRefiningSearchDesc}
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                    {filteredMenuItems.map(item => (
-                      <div 
-                        key={item.id} 
-                        className="glass-panel list-item-hover"
-                        style={{ 
-                          overflow: 'hidden', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          border: '1px solid var(--border-color)',
-                          opacity: item.isAvailable ? 1 : 0.6
-                        }}
-                      >
-                        {/* Item Image */}
-                        <div style={{ height: '150px', position: 'relative' }}>
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.name} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600';
+                        <ShoppingBag size={18} />
+                        <span>{USER_TRANSLATIONS[language].cart || 'Cart'}</span>
+                        {cart.length > 0 && (
+                          <span
+                            style={{
+                              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                              color: 'white',
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: '9999px',
+                              boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
-                          />
-                          <span style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(3, 7, 18, 0.8)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
-                            {item.stallName}
+                          >
+                            {cart.reduce((sum, c) => sum + c.quantity, 0)}
                           </span>
-                        </div>
+                        )}
+                      </button>
+                    </div>
 
-                        {/* Content */}
-                        <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
-                          <div>
-                            <span className="badge badge-info" style={{ textTransform: 'capitalize', fontSize: '0.65rem', marginBottom: '0.5rem', borderRadius: '4px' }}>{item.category}</span>
-                            <h4 style={{ fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.35rem', color: 'white' }}>{item.name}</h4>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.4, height: '56px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', marginBottom: '0.75rem' }}>
-                              {item.description}
-                            </p>
+                    {/* Category pills */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '0.5rem',
+                        overflowX: 'auto',
+                        paddingBottom: '0.25rem',
+                      }}
+                    >
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{
+                            padding: '0.35rem 0.85rem',
+                            fontSize: '0.8rem',
+                            textTransform: 'capitalize',
+                            borderRadius: '20px',
+                          }}
+                        >
+                          {cat === 'all'
+                            ? `🍽️ ${USER_TRANSLATIONS[language].allCategoriesTab}`
+                            : cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Menu Items Grid */}
+                  {filteredMenuItems.length === 0 ? (
+                    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                      <Info
+                        size={40}
+                        style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }}
+                      />
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>
+                        {USER_TRANSLATIONS[language].noDishesFoundHeader}
+                      </h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                        {USER_TRANSLATIONS[language].tryRefiningSearchDesc}
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gap: '1.5rem',
+                      }}
+                    >
+                      {filteredMenuItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="glass-panel list-item-hover"
+                          style={{
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid var(--border-color)',
+                            opacity: item.isAvailable ? 1 : 0.6,
+                          }}
+                        >
+                          {/* Item Image */}
+                          <div style={{ height: '150px', position: 'relative' }}>
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600';
+                              }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                background: 'rgba(3, 7, 18, 0.8)',
+                                border: '1px solid var(--border-color)',
+                                color: 'white',
+                                fontSize: '0.75rem',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '6px',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {item.stallName}
+                            </span>
                           </div>
 
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-green)' }}>
-                                ${item.price.toFixed(2)}
+                          {/* Content */}
+                          <div
+                            style={{
+                              padding: '1.25rem',
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: '1rem',
+                            }}
+                          >
+                            <div>
+                              <span
+                                className="badge badge-info"
+                                style={{
+                                  textTransform: 'capitalize',
+                                  fontSize: '0.65rem',
+                                  marginBottom: '0.5rem',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                {item.category}
                               </span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <Clock size={11} /> {item.prepTime} min
-                              </span>
+                              <h4
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: '1.05rem',
+                                  margin: '0 0 0.35rem',
+                                  color: 'white',
+                                }}
+                              >
+                                {item.name}
+                              </h4>
+                              <p
+                                style={{
+                                  color: 'var(--text-secondary)',
+                                  fontSize: '0.8rem',
+                                  lineHeight: 1.4,
+                                  height: '56px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  marginBottom: '0.75rem',
+                                }}
+                              >
+                                {item.description}
+                              </p>
                             </div>
 
-                            {item.isAvailable ? (() => {
-                              const cartEntry = cart.find(c => c.item.id === item.id);
-                              if (cartEntry) {
-                                return (
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.25rem 0.5rem', border: '1px solid var(--border-color)' }}>
-                                    <button
-                                      onClick={() => {
-                                        if (cartEntry.quantity <= 1) {
-                                          removeFromCart(item.id);
-                                        } else {
-                                          updateCartQty(item.id, -1);
-                                        }
-                                      }}
-                                      className="btn btn-secondary"
-                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                      aria-label={USER_TRANSLATIONS[language].decreaseQuantity}
-                                    >
-                                      {cartEntry.quantity <= 1 ? '🗑' : '−'}
-                                    </button>
-                                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>
-                                      {cartEntry.quantity}
-                                    </span>
-                                    <button
-                                      onClick={() => updateCartQty(item.id, 1)}
-                                      className="btn btn-secondary"
-                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                      aria-label={USER_TRANSLATIONS[language].increaseQuantity}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                );
-                              }
-                              return (
-                                <button 
-                                  onClick={() => addToCart(item)}
-                                  className="btn btn-primary" 
-                                  style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-                                >
-                                  <Plus size={14} /> {USER_TRANSLATIONS[language].addToCartButton}
-                                </button>
-                              );
-                            })() : (
-                              <button 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem', cursor: 'not-allowed', color: 'var(--text-muted)' }}
-                                disabled
+                            <div>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '0.75rem',
+                                }}
                               >
-                                {USER_TRANSLATIONS[language].outOfStockLabel}
-                              </button>
-                            )}
+                                <span
+                                  style={{
+                                    fontSize: '1.15rem',
+                                    fontWeight: 700,
+                                    color: 'var(--accent-green)',
+                                  }}
+                                >
+                                  ${item.price.toFixed(2)}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--text-muted)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                  }}
+                                >
+                                  <Clock size={11} /> {item.prepTime} min
+                                </span>
+                              </div>
+
+                              {item.isAvailable ? (
+                                (() => {
+                                  const cartEntry = cart.find((c) => c.item.id === item.id);
+                                  if (cartEntry) {
+                                    return (
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          background: 'rgba(255,255,255,0.05)',
+                                          borderRadius: '8px',
+                                          padding: '0.25rem 0.5rem',
+                                          border: '1px solid var(--border-color)',
+                                        }}
+                                      >
+                                        <button
+                                          onClick={() => {
+                                            if (cartEntry.quantity <= 1) {
+                                              removeFromCart(item.id);
+                                            } else {
+                                              updateCartQty(item.id, -1);
+                                            }
+                                          }}
+                                          className="btn btn-secondary"
+                                          style={{
+                                            padding: '0.25rem 0.5rem',
+                                            fontSize: '0.85rem',
+                                            width: '32px',
+                                            height: '32px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                          aria-label={USER_TRANSLATIONS[language].decreaseQuantity}
+                                        >
+                                          {cartEntry.quantity <= 1 ? '🗑' : '−'}
+                                        </button>
+                                        <span
+                                          style={{
+                                            fontWeight: 700,
+                                            fontSize: '0.9rem',
+                                            color: 'white',
+                                          }}
+                                        >
+                                          {cartEntry.quantity}
+                                        </span>
+                                        <button
+                                          onClick={() => updateCartQty(item.id, 1)}
+                                          className="btn btn-secondary"
+                                          style={{
+                                            padding: '0.25rem 0.5rem',
+                                            fontSize: '0.85rem',
+                                            width: '32px',
+                                            height: '32px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                          aria-label={USER_TRANSLATIONS[language].increaseQuantity}
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      onClick={() => addToCart(item)}
+                                      className="btn btn-primary"
+                                      style={{
+                                        width: '100%',
+                                        fontSize: '0.85rem',
+                                        padding: '0.5rem 1rem',
+                                      }}
+                                    >
+                                      <Plus size={14} />{' '}
+                                      {USER_TRANSLATIONS[language].addToCartButton}
+                                    </button>
+                                  );
+                                })()
+                              ) : (
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{
+                                    width: '100%',
+                                    fontSize: '0.85rem',
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'not-allowed',
+                                    color: 'var(--text-muted)',
+                                  }}
+                                  disabled
+                                >
+                                  {USER_TRANSLATIONS[language].outOfStockLabel}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         ) : (
           /* Order tracking tab */
           <div className="glass-panel" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-              <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <Clock size={22} color="var(--accent-cyan)" /> {USER_TRANSLATIONS[language].orderTrackingConsoleHeader}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                borderBottom: '1px solid var(--border-color)',
+                paddingBottom: '0.75rem',
+              }}
+            >
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 800,
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  margin: 0,
+                }}
+              >
+                <Clock size={22} color="var(--accent-cyan)" />{' '}
+                {USER_TRANSLATIONS[language].orderTrackingConsoleHeader}
               </h2>
-              <button 
+              <button
                 onClick={() => setActiveTab('browse')}
                 className="btn btn-secondary"
                 style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', borderRadius: '8px' }}
@@ -2074,10 +2883,45 @@ Rules:
 
             {orders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-                <ShoppingBag size={48} style={{ color: 'var(--text-muted)', opacity: 0.3, marginBottom: '1rem' }} />
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>{language === 'es' ? 'Aún no se han realizado pedidos' : language === 'fr' ? 'Aucune commande passée pour le moment' : language === 'de' ? 'Noch keine Bestellungen aufgegeben' : language === 'it' ? 'Nessun ordine effettuato' : language === 'pt' ? 'Nenhum pedido feito ainda' : language === 'nl' ? 'Nog geen bestellingen geplaatst' : language === 'ar' ? 'لم يتم تقديم أي طلبات بعد' : 'No orders placed yet'}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                  {language === 'es' ? '¡Navega por nuestros puestos de comida y realiza tu primer pedido para rastrearlo aquí!' : language === 'fr' ? 'Parcourez nos kiosques alimentaires et passez votre première commande pour la suivre ici!' : language === 'de' ? 'Stöbern Sie in unseren Essenskiosken und geben Sie Ihre erste Bestellung auf, um sie hier zu verfolgen!' : language === 'it' ? 'Sfoglia i nostri chioschi e invia il tuo primo ordine per tracciarlo qui!' : language === 'pt' ? 'Navegue pelos nossos quiosques e faça seu primeiro pedido para rastreá-lo aqui!' : language === 'nl' ? 'Blader door onze eetkiosken en plaats je eerste bestelling om deze hier te volgen!' : language === 'ar' ? 'تصفح أكشاك الطعام لدينا وقدم طلبك الأول لتتبعه هنا!' : 'Browse our food kiosks and place your first order to track it here!'}
+                <ShoppingBag
+                  size={48}
+                  style={{ color: 'var(--text-muted)', opacity: 0.3, marginBottom: '1rem' }}
+                />
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
+                  {language === 'es'
+                    ? 'Aún no se han realizado pedidos'
+                    : language === 'fr'
+                      ? 'Aucune commande passée pour le moment'
+                      : language === 'de'
+                        ? 'Noch keine Bestellungen aufgegeben'
+                        : language === 'it'
+                          ? 'Nessun ordine effettuato'
+                          : language === 'pt'
+                            ? 'Nenhum pedido feito ainda'
+                            : language === 'nl'
+                              ? 'Nog geen bestellingen geplaatst'
+                              : language === 'ar'
+                                ? 'لم يتم تقديم أي طلبات بعد'
+                                : 'No orders placed yet'}
+                </h3>
+                <p
+                  style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}
+                >
+                  {language === 'es'
+                    ? '¡Navega por nuestros puestos de comida y realiza tu primer pedido para rastrearlo aquí!'
+                    : language === 'fr'
+                      ? 'Parcourez nos kiosques alimentaires et passez votre première commande pour la suivre ici!'
+                      : language === 'de'
+                        ? 'Stöbern Sie in unseren Essenskiosken und geben Sie Ihre erste Bestellung auf, um sie hier zu verfolgen!'
+                        : language === 'it'
+                          ? 'Sfoglia i nostri chioschi e invia il tuo primo ordine per tracciarlo qui!'
+                          : language === 'pt'
+                            ? 'Navegue pelos nossos quiosques e faça seu primeiro pedido para rastreá-lo aqui!'
+                            : language === 'nl'
+                              ? 'Blader door onze eetkiosken en plaats je eerste bestelling om deze hier te volgen!'
+                              : language === 'ar'
+                                ? 'تصفح أكشاك الطعام لدينا وقدم طلبك الأول لتتبعه هنا!'
+                                : 'Browse our food kiosks and place your first order to track it here!'}
                 </p>
               </div>
             ) : (
@@ -2085,88 +2929,233 @@ Rules:
                 {orders
                   .slice()
                   .sort((a, b) => new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime())
-                  .map(order => (
-                    <div 
+                  .map((order) => (
+                    <div
                       key={order.id}
                       className="glass-panel-glow"
-                      style={{ 
-                        padding: '1.5rem', 
+                      style={{
+                        padding: '1.5rem',
                         border: '1px solid var(--border-color-glow)',
                         background: 'rgba(3, 7, 18, 0.45)',
-                        borderRadius: '16px'
+                        borderRadius: '16px',
                       }}
                     >
                       {/* Order Metadata Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          borderBottom: '1px dashed var(--border-color)',
+                          paddingBottom: '1rem',
+                          marginBottom: '1.25rem',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem',
+                          alignItems: 'center',
+                        }}
+                      >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>{USER_TRANSLATIONS[language].orderIdLabel || 'Order ID'}: #{order.id.split('-')[1] || order.id}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({order.id})</span>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white' }}>
+                              {USER_TRANSLATIONS[language].orderIdLabel || 'Order ID'}: #
+                              {order.id.split('-')[1] || order.id}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              ({order.id})
+                            </span>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                            {USER_TRANSLATIONS[language].placedOnLabel} {new Date(order.orderTime).toLocaleString()}
+                          <div
+                            style={{
+                              fontSize: '0.8rem',
+                              color: 'var(--text-secondary)',
+                              marginTop: '0.25rem',
+                            }}
+                          >
+                            {USER_TRANSLATIONS[language].placedOnLabel}{' '}
+                            {new Date(order.orderTime).toLocaleString()}
                             {order.stand && order.seatNumber && (
-                              <span style={{ marginLeft: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                              <span
+                                style={{
+                                  marginLeft: '0.5rem',
+                                  color: 'var(--accent-cyan)',
+                                  fontWeight: 600,
+                                }}
+                              >
                                 📍 {order.stand}, {order.seatNumber}
                               </span>
                             )}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{language === 'es' ? 'Gran Total' : language === 'fr' ? 'Total global' : language === 'de' ? 'Gesamtsumme' : language === 'it' ? 'Totale complessivo' : language === 'pt' ? 'Total Geral' : language === 'nl' ? 'Eindtotaal' : language === 'ar' ? 'المجموع الكلي' : 'Grand Total'}</div>
-                          <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>${order.totalAmount.toFixed(2)}</strong>
+                          <div
+                            style={{
+                              fontSize: '0.75rem',
+                              color: 'var(--text-muted)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            {language === 'es'
+                              ? 'Gran Total'
+                              : language === 'fr'
+                                ? 'Total global'
+                                : language === 'de'
+                                  ? 'Gesamtsumme'
+                                  : language === 'it'
+                                    ? 'Totale complessivo'
+                                    : language === 'pt'
+                                      ? 'Total Geral'
+                                      : language === 'nl'
+                                        ? 'Eindtotaal'
+                                        : language === 'ar'
+                                          ? 'المجموع الكلي'
+                                          : 'Grand Total'}
+                          </div>
+                          <strong style={{ fontSize: '1.25rem', color: 'var(--accent-green)' }}>
+                            ${order.totalAmount.toFixed(2)}
+                          </strong>
                         </div>
                       </div>
 
                       {/* Kiosk breakdown */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {Object.values(order.kioskOrders).map(kioskOrder => {
-                          const logoEmoji = stalls.find(s => s.id === kioskOrder.kioskId)?.logoUrl || '🏪';
+                        {Object.values(order.kioskOrders).map((kioskOrder) => {
+                          const logoEmoji =
+                            stalls.find((s) => s.id === kioskOrder.kioskId)?.logoUrl || '🏪';
                           return (
-                            <div 
+                            <div
                               key={kioskOrder.kioskId}
-                              style={{ 
+                              style={{
                                 background: 'rgba(255, 255, 255, 0.02)',
                                 padding: '1.25rem',
                                 borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
+                                border: '1px solid var(--border-color)',
                               }}
                             >
                               {/* Kiosk Name & Status Badge */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '0.75rem',
+                                  flexWrap: 'wrap',
+                                  gap: '0.5rem',
+                                }}
+                              >
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
                                   <span style={{ fontSize: '1.25rem' }}>{logoEmoji}</span>
-                                  <strong style={{ fontSize: '1rem', color: 'white' }}>{kioskOrder.kioskName}</strong>
+                                  <strong style={{ fontSize: '1rem', color: 'white' }}>
+                                    {kioskOrder.kioskName}
+                                  </strong>
                                 </div>
-                                <span className={`badge ${
-                                  kioskOrder.status === 'pending' ? 'badge-warning' :
-                                  kioskOrder.status === 'preparing' ? 'badge-info' :
-                                  kioskOrder.status === 'ready' ? 'badge-success' :
-                                  kioskOrder.status === 'completed' ? 'badge-secondary' :
-                                  'badge-danger'
-                                }`} style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-                                  {kioskOrder.status === 'ready' ? (USER_TRANSLATIONS[language].progressStepReady + ' 🎉') : kioskOrder.status === 'pending' ? USER_TRANSLATIONS[language].orderStatusPending : kioskOrder.status === 'preparing' ? USER_TRANSLATIONS[language].orderStatusPreparing : kioskOrder.status === 'completed' ? USER_TRANSLATIONS[language].orderStatusCompleted : USER_TRANSLATIONS[language].orderStatusCancelled}
+                                <span
+                                  className={`badge ${
+                                    kioskOrder.status === 'pending'
+                                      ? 'badge-warning'
+                                      : kioskOrder.status === 'preparing'
+                                        ? 'badge-info'
+                                        : kioskOrder.status === 'ready'
+                                          ? 'badge-success'
+                                          : kioskOrder.status === 'completed'
+                                            ? 'badge-secondary'
+                                            : 'badge-danger'
+                                  }`}
+                                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                                >
+                                  {kioskOrder.status === 'ready'
+                                    ? USER_TRANSLATIONS[language].progressStepReady + ' 🎉'
+                                    : kioskOrder.status === 'pending'
+                                      ? USER_TRANSLATIONS[language].orderStatusPending
+                                      : kioskOrder.status === 'preparing'
+                                        ? USER_TRANSLATIONS[language].orderStatusPreparing
+                                        : kioskOrder.status === 'completed'
+                                          ? USER_TRANSLATIONS[language].orderStatusCompleted
+                                          : USER_TRANSLATIONS[language].orderStatusCancelled}
                                 </span>
                               </div>
 
                               {/* Items from this kiosk */}
                               <div style={{ paddingLeft: '0.25rem', marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>{language === 'es' ? 'Artículos Pedidos' : language === 'fr' ? 'Articles Commandés' : language === 'de' ? 'Bestellte Artikel' : language === 'it' ? 'Articoli Ordinati' : language === 'pt' ? 'Itens Pedidos' : language === 'nl' ? 'Bestelde Items' : language === 'ar' ? 'الأصناف المطلوبة' : 'Items Ordered'}</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <div
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--text-muted)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    marginBottom: '0.4rem',
+                                  }}
+                                >
+                                  {language === 'es'
+                                    ? 'Artículos Pedidos'
+                                    : language === 'fr'
+                                      ? 'Articles Commandés'
+                                      : language === 'de'
+                                        ? 'Bestellte Artikel'
+                                        : language === 'it'
+                                          ? 'Articoli Ordinati'
+                                          : language === 'pt'
+                                            ? 'Itens Pedidos'
+                                            : language === 'nl'
+                                              ? 'Bestelde Items'
+                                              : language === 'ar'
+                                                ? 'الأصناف المطلوبة'
+                                                : 'Items Ordered'}
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.4rem',
+                                  }}
+                                >
                                   {kioskOrder.items.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        fontSize: '0.85rem',
+                                        color: 'var(--text-primary)',
+                                      }}
+                                    >
                                       <div>
-                                        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginRight: '0.5rem' }}>{item.quantity}x</span>
+                                        <span
+                                          style={{
+                                            fontWeight: 700,
+                                            color: 'var(--accent-cyan)',
+                                            marginRight: '0.5rem',
+                                          }}
+                                        >
+                                          {item.quantity}x
+                                        </span>
                                         <span>{item.name}</span>
                                       </div>
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                        status: <strong style={{ 
-                                          color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' :
-                                                 kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' :
-                                                 kioskOrder.status === 'ready' ? 'var(--accent-green)' :
-                                                 kioskOrder.status === 'completed' ? 'var(--text-muted)' :
-                                                 'var(--accent-red)'
-                                        }}>{kioskOrder.status}</strong>
+                                      <span
+                                        style={{
+                                          fontSize: '0.8rem',
+                                          color: 'var(--text-secondary)',
+                                        }}
+                                      >
+                                        status:{' '}
+                                        <strong
+                                          style={{
+                                            color:
+                                              kioskOrder.status === 'pending'
+                                                ? 'var(--accent-orange)'
+                                                : kioskOrder.status === 'preparing'
+                                                  ? 'var(--accent-cyan)'
+                                                  : kioskOrder.status === 'ready'
+                                                    ? 'var(--accent-green)'
+                                                    : kioskOrder.status === 'completed'
+                                                      ? 'var(--text-muted)'
+                                                      : 'var(--accent-red)',
+                                          }}
+                                        >
+                                          {kioskOrder.status}
+                                        </strong>
                                       </span>
                                     </div>
                                   ))}
@@ -2174,42 +3163,108 @@ Rules:
                               </div>
 
                               {/* Progress bar */}
-                              <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', position: 'relative', marginBottom: '0.5rem' }}>
-                                <div 
-                                  style={{ 
-                                    height: '100%', 
+                              <div
+                                style={{
+                                  height: '6px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  borderRadius: '3px',
+                                  position: 'relative',
+                                  marginBottom: '0.5rem',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: '100%',
                                     width: `${
-                                      kioskOrder.status === 'pending' ? 25 :
-                                      kioskOrder.status === 'preparing' ? 60 :
-                                      kioskOrder.status === 'ready' ? 100 :
-                                      kioskOrder.status === 'completed' ? 100 :
-                                      0
-                                    }%`, 
-                                    background: kioskOrder.status === 'ready' || kioskOrder.status === 'completed' ? 'var(--accent-green)' : kioskOrder.status === 'cancelled' ? 'var(--accent-red)' : 'var(--accent-cyan)',
+                                      kioskOrder.status === 'pending'
+                                        ? 25
+                                        : kioskOrder.status === 'preparing'
+                                          ? 60
+                                          : kioskOrder.status === 'ready'
+                                            ? 100
+                                            : kioskOrder.status === 'completed'
+                                              ? 100
+                                              : 0
+                                    }%`,
+                                    background:
+                                      kioskOrder.status === 'ready' ||
+                                      kioskOrder.status === 'completed'
+                                        ? 'var(--accent-green)'
+                                        : kioskOrder.status === 'cancelled'
+                                          ? 'var(--accent-red)'
+                                          : 'var(--accent-cyan)',
                                     borderRadius: '3px',
-                                    transition: 'width 0.4s ease'
-                                  }} 
+                                    transition: 'width 0.4s ease',
+                                  }}
                                 />
                               </div>
-                              
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                <span style={{ color: kioskOrder.status === 'pending' ? 'var(--accent-orange)' : '' }}>{USER_TRANSLATIONS[language].progressStepReceived}</span>
-                                <span style={{ color: kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' : '' }}>{USER_TRANSLATIONS[language].progressStepPreparing}</span>
-                                <span style={{ color: kioskOrder.status === 'ready' ? 'var(--accent-green)' : '' }}>{USER_TRANSLATIONS[language].progressStepReady}</span>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  fontSize: '0.7rem',
+                                  color: 'var(--text-muted)',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    color:
+                                      kioskOrder.status === 'pending' ? 'var(--accent-orange)' : '',
+                                  }}
+                                >
+                                  {USER_TRANSLATIONS[language].progressStepReceived}
+                                </span>
+                                <span
+                                  style={{
+                                    color:
+                                      kioskOrder.status === 'preparing' ? 'var(--accent-cyan)' : '',
+                                  }}
+                                >
+                                  {USER_TRANSLATIONS[language].progressStepPreparing}
+                                </span>
+                                <span
+                                  style={{
+                                    color:
+                                      kioskOrder.status === 'ready' ? 'var(--accent-green)' : '',
+                                  }}
+                                >
+                                  {USER_TRANSLATIONS[language].progressStepReady}
+                                </span>
                               </div>
 
                               {kioskOrder.status === 'cancelled' && kioskOrder.declineReason && (
-                                <div style={{ 
-                                  marginTop: '0.75rem', 
-                                  padding: '0.5rem 0.75rem', 
-                                  background: 'rgba(239, 68, 68, 0.05)', 
-                                  border: '1px solid rgba(239, 68, 68, 0.1)', 
-                                  borderRadius: '6px', 
-                                  fontSize: '0.75rem', 
-                                  color: '#f87171',
-                                  textAlign: 'left'
-                                }}>
-                                  🚫 <strong>{language === 'es' ? 'Rechazado:' : language === 'fr' ? 'Décliné:' : language === 'de' ? 'Abgelehnt:' : language === 'it' ? 'Rifiutato:' : language === 'pt' ? 'Recusado:' : language === 'nl' ? 'Geweigerd:' : language === 'ar' ? 'تم الرفض:' : 'Declined:'}</strong> {kioskOrder.declineReason}
+                                <div
+                                  style={{
+                                    marginTop: '0.75rem',
+                                    padding: '0.5rem 0.75rem',
+                                    background: 'rgba(239, 68, 68, 0.05)',
+                                    border: '1px solid rgba(239, 68, 68, 0.1)',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    color: '#f87171',
+                                    textAlign: 'left',
+                                  }}
+                                >
+                                  🚫{' '}
+                                  <strong>
+                                    {language === 'es'
+                                      ? 'Rechazado:'
+                                      : language === 'fr'
+                                        ? 'Décliné:'
+                                        : language === 'de'
+                                          ? 'Abgelehnt:'
+                                          : language === 'it'
+                                            ? 'Rifiutato:'
+                                            : language === 'pt'
+                                              ? 'Recusado:'
+                                              : language === 'nl'
+                                                ? 'Geweigerd:'
+                                                : language === 'ar'
+                                                  ? 'تم الرفض:'
+                                                  : 'Declined:'}
+                                  </strong>{' '}
+                                  {kioskOrder.declineReason}
                                 </div>
                               )}
                             </div>
@@ -2218,7 +3273,17 @@ Rules:
                       </div>
 
                       {order.notes && (
-                        <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <div
+                          style={{
+                            marginTop: '1rem',
+                            padding: '0.75rem',
+                            background: 'rgba(255,255,255,0.01)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.02)',
+                            fontSize: '0.8rem',
+                            color: 'var(--text-secondary)',
+                          }}
+                        >
                           ✍️ <strong>Delivery Notes:</strong> {order.notes}
                         </div>
                       )}
@@ -2228,7 +3293,6 @@ Rules:
             )}
           </div>
         )}
-
       </div>
 
       {/* ================= FLOATING CART & WALLET SIDEBAR OVERLAY ================= */}
@@ -2259,53 +3323,81 @@ Rules:
 
       {/* ================= CHECKOUT SUCCESS MODAL ================= */}
       {showSuccessModal && lastOrderDetails && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(3, 7, 18, 0.85)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1.5rem'
-        }}>
-          <div 
-            className="glass-panel" 
-            style={{ 
-              maxWidth: '460px', 
-              width: '100%', 
-              padding: '2.5rem', 
-              borderRadius: '24px', 
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(3, 7, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              maxWidth: '460px',
+              width: '100%',
+              padding: '2.5rem',
+              borderRadius: '24px',
               textAlign: 'center',
               boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
-              border: '1px solid var(--border-color-glow)'
+              border: '1px solid var(--border-color-glow)',
             }}
           >
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-green)', margin: '0 auto 1.5rem' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-green)',
+                margin: '0 auto 1.5rem',
+              }}
+            >
               <CheckCircle size={36} />
             </div>
 
-            <h3 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'white' }}>
+            <h3
+              className="font-display"
+              style={{
+                fontSize: '1.75rem',
+                fontWeight: 800,
+                marginBottom: '0.5rem',
+                color: 'white',
+              }}
+            >
               Order Placed Successfully!
             </h3>
-            
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '0.95rem',
+                marginBottom: '1.5rem',
+              }}
+            >
               Your order has been split and sent directly to the food stalls for preparation.
             </p>
 
-            <div 
-              style={{ 
-                background: 'rgba(3, 7, 18, 0.4)', 
-                borderRadius: '12px', 
-                padding: '1rem', 
+            <div
+              style={{
+                background: 'rgba(3, 7, 18, 0.4)',
+                borderRadius: '12px',
+                padding: '1rem',
                 border: '1px solid var(--border-color)',
                 marginBottom: '2rem',
                 textAlign: 'left',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.5rem',
-                fontSize: '0.85rem'
+                fontSize: '0.85rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -2314,27 +3406,41 @@ Rules:
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Total Paid:</span>
-                <strong style={{ color: 'var(--accent-green)' }}>${lastOrderDetails.total.toFixed(2)}</strong>
+                <strong style={{ color: 'var(--accent-green)' }}>
+                  ${lastOrderDetails.total.toFixed(2)}
+                </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Payment Method:</span>
-                <span style={{ color: 'var(--accent-cyan)' }}>{USER_TRANSLATIONS[language].simulatedWalletBalance}</span>
+                <span style={{ color: 'var(--accent-cyan)' }}>
+                  {USER_TRANSLATIONS[language].simulatedWalletBalance}
+                </span>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <button 
+              <button
                 onClick={() => {
                   setShowSuccessModal(false);
                   setActiveTab('orders');
                 }}
-                className="btn btn-primary" 
+                className="btn btn-primary"
                 style={{ width: '100%', padding: '0.75rem' }}
               >
                 Track Live Progress
               </button>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                <Sparkles size={12} color="var(--accent-orange)" /> Tip: Switch to Stall Admin view to see your orders in real-time!
+              <p
+                style={{
+                  color: 'var(--text-muted)',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <Sparkles size={12} color="var(--accent-orange)" /> Tip: Switch to Stall Admin view
+                to see your orders in real-time!
               </p>
             </div>
           </div>
@@ -2357,7 +3463,6 @@ Rules:
           onClose={() => setShowSeatMapModal(false)}
         />
       )}
-
     </div>
   );
 };

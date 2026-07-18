@@ -7,12 +7,24 @@ vi.mock('./firebase', () => ({ db: null, auth: null }));
 // Minimal in-memory localStorage so the sandbox path works under Node.
 class MemoryStorage {
   private store = new Map<string, string>();
-  get length() { return this.store.size; }
-  key(i: number) { return Array.from(this.store.keys())[i] ?? null; }
-  getItem(k: string) { return this.store.has(k) ? this.store.get(k)! : null; }
-  setItem(k: string, v: string) { this.store.set(k, String(v)); }
-  removeItem(k: string) { this.store.delete(k); }
-  clear() { this.store.clear(); }
+  get length() {
+    return this.store.size;
+  }
+  key(i: number) {
+    return Array.from(this.store.keys())[i] ?? null;
+  }
+  getItem(k: string) {
+    return this.store.has(k) ? this.store.get(k)! : null;
+  }
+  setItem(k: string, v: string) {
+    this.store.set(k, String(v));
+  }
+  removeItem(k: string) {
+    this.store.delete(k);
+  }
+  clear() {
+    this.store.clear();
+  }
 }
 vi.stubGlobal('localStorage', new MemoryStorage());
 
@@ -37,7 +49,11 @@ describe('wallet funds arithmetic (LocalStorage sandbox)', () => {
     expect(ok).toBe(true);
     const wallet = await db.getWallet(UID);
     expect(wallet.balance).toBe(10);
-    expect(wallet.transactions[0]).toMatchObject({ amount: 20, type: 'purchase', description: 'Burger combo' });
+    expect(wallet.transactions[0]).toMatchObject({
+      amount: 20,
+      type: 'purchase',
+      description: 'Burger combo',
+    });
   });
 
   it('refuses to deduct more than the available balance (no overdraft)', async () => {

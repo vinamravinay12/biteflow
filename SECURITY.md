@@ -23,6 +23,7 @@ Browser ──POST /api/concierge──▶ Cloud Function (functions/index.js)
 - `.env` is git-ignored; `.env.example` documents every variable with empty placeholders.
 
 **Setup:**
+
 ```bash
 firebase functions:secrets:set GEMINI_API_KEY
 firebase deploy --only functions,hosting
@@ -46,27 +47,27 @@ firebase deploy --only functions,hosting
 - Only the collection paths the app actually uses are enumerated; **everything else is denied**.
 - Wallets require a valid non-negative balance and can never be deleted.
 
-**Cross-customer order enumeration is denied.** A `collectionGroup('orders')` query requires an explicit `/{path=**}/orders/{orderId}` rule. Granting it would let *any* signed-in session — including an anonymous guest — enumerate every customer's orders (names, seat numbers, totals). This was found and closed during testing; the rule is deliberately absent and the omission is documented inline in `firestore.rules`.
+**Cross-customer order enumeration is denied.** A `collectionGroup('orders')` query requires an explicit `/{path=**}/orders/{orderId}` rule. Granting it would let _any_ signed-in session — including an anonymous guest — enumerate every customer's orders (names, seat numbers, totals). This was found and closed during testing; the rule is deliberately absent and the omission is documented inline in `firestore.rules`.
 
-*Verified:* an anonymous session issuing that query receives `403 PERMISSION_DENIED`, while the public menu catalogue (`collectionGroup('menu_items')`, no personal data) still reads normally.
+_Verified:_ an anonymous session issuing that query receives `403 PERMISSION_DENIED`, while the public menu catalogue (`collectionGroup('menu_items')`, no personal data) still reads normally.
 
-*Accepted tradeoff:* the admin console cannot compute a platform-wide order count client-side and falls back to locally-known orders. Restoring it properly needs role-based custom claims from a trusted backend or a server-maintained aggregate.
+_Accepted tradeoff:_ the admin console cannot compute a platform-wide order count client-side and falls back to locally-known orders. Restoring it properly needs role-based custom claims from a trusted backend or a server-maintained aggregate.
 
 **A one-time order backfill was removed from app startup.** It ran on every page load for every visitor, performing a full cross-customer scan of the orders collection group and rewriting documents. `placeOrder` already dual-writes each order to the customer's and every involved kiosk's subcollection, so the backfill was unnecessary; historical migrations belong in a one-off admin script.
 
-**Documented limitation:** writes are gated on *authenticated + valid* rather than strict per-uid ownership, because actors legitimately touch data they don't own by uid — the single admin manages every stall, and a merchant issues a wallet **refund** to a customer on decline. Tightening this to true per-role ownership requires a trusted backend minting custom claims (or Cloud Functions performing refunds server-side). This is stated inline in the rules file too.
+**Documented limitation:** writes are gated on _authenticated + valid_ rather than strict per-uid ownership, because actors legitimately touch data they don't own by uid — the single admin manages every stall, and a merchant issues a wallet **refund** to a customer on decline. Tightening this to true per-role ownership requires a trusted backend minting custom claims (or Cloud Functions performing refunds server-side). This is stated inline in the rules file too.
 
 ## 5. AI-specific hardening
 
-| Control | Where |
-| :-- | :-- |
-| Input sanitization (HTML stripped) | `sanitizePrompt` — [`src/utils/aiActions.ts`](src/utils/aiActions.ts) |
-| Length clamping (500 chars) | `sanitizePrompt` |
-| Prompt-injection / jailbreak detection | `detectPromptInjection` — 13 patterns, client **and** server |
-| Server-side rate limiting | `functions/index.js` — 20 req/min per IP |
-| Model-output validation | `parseAiResponse` only honours cart additions whose ids resolve to **real** menu items; quantities are clamped. The model cannot inject arbitrary ids, prices, or quantities. |
-| Request size cap | 20 KB in the function |
-| Upstream timeout | 15 s `AbortSignal.timeout` |
+| Control                                | Where                                                                                                                                                                         |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Input sanitization (HTML stripped)     | `sanitizePrompt` — [`src/utils/aiActions.ts`](src/utils/aiActions.ts)                                                                                                         |
+| Length clamping (500 chars)            | `sanitizePrompt`                                                                                                                                                              |
+| Prompt-injection / jailbreak detection | `detectPromptInjection` — 13 patterns, client **and** server                                                                                                                  |
+| Server-side rate limiting              | `functions/index.js` — 20 req/min per IP                                                                                                                                      |
+| Model-output validation                | `parseAiResponse` only honours cart additions whose ids resolve to **real** menu items; quantities are clamped. The model cannot inject arbitrary ids, prices, or quantities. |
+| Request size cap                       | 20 KB in the function                                                                                                                                                         |
+| Upstream timeout                       | 15 s `AbortSignal.timeout`                                                                                                                                                    |
 
 The injection guard runs before any request reaches the model, and again server-side (never trust the client).
 

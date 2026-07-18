@@ -47,14 +47,26 @@ describe('SeatMapModal — accessibility', () => {
     setup({ tempStandName: 'North Stand' });
     const radios = screen.getAllByRole('radio');
     expect(radios).toHaveLength(4);
-    expect(screen.getByRole('radio', { name: 'North Stand' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('radio', { name: 'West Stand' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('radio', { name: 'North Stand' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect(screen.getByRole('radio', { name: 'West Stand' })).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
   });
 
   it('marks the selected seat with aria-pressed', () => {
     setup({ tempSeatNumber: 'C-3' });
-    expect(screen.getByRole('button', { name: 'Seat C-3' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Seat A-1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Seat C-3' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Seat A-1' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
   });
 });
 

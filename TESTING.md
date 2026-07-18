@@ -17,14 +17,14 @@ npm run verify   # lint → typecheck → test:coverage → build
 
 Coverage is measured on the domain logic in `src/utils/**` (where the business rules live) and **enforced** — the run fails below the thresholds in [`vite.config.ts`](vite.config.ts).
 
-| Module | Lines | Branches | Functions |
-| :-- | :--: | :--: | :--: |
-| `aiActions.ts` (AI action parser, safety) | 100% | 91.25% | 100% |
-| `cart.ts` (cart + multi-kiosk math) | 100% | 85.71% | 100% |
-| `crypto.ts` (AES-GCM, admin auth hashing) | 100% | 87.5% | 100% |
-| `useDocumentLanguage.ts` (lang/dir a11y hook) | 100% | 75% | 100% |
-| `constants.ts` | 100% | 50% | 100% |
-| `database.ts` (mostly Firestore I/O) | 18.82% | 9.31% | 17.39% |
+| Module                                        | Lines  | Branches | Functions |
+| :-------------------------------------------- | :----: | :------: | :-------: |
+| `aiActions.ts` (AI action parser, safety)     |  100%  |  91.25%  |   100%    |
+| `cart.ts` (cart + multi-kiosk math)           |  100%  |  85.71%  |   100%    |
+| `crypto.ts` (AES-GCM, admin auth hashing)     |  100%  |  87.5%   |   100%    |
+| `useDocumentLanguage.ts` (lang/dir a11y hook) |  100%  |   75%    |   100%    |
+| `constants.ts`                                |  100%  |   50%    |   100%    |
+| `database.ts` (mostly Firestore I/O)          | 18.82% |  9.31%   |  17.39%   |
 
 `database.ts` is dominated by Firebase I/O wrappers; its **pure** logic (wallet arithmetic, credential verification) is covered by dedicated tests, while the thin CRUD passthroughs are exercised through the app rather than mocked line-by-line.
 
@@ -32,6 +32,7 @@ Coverage is measured on the domain logic in `src/utils/**` (where the business r
 
 **Unit — AI behaviour** (`src/utils/aiActions.test.ts`)
 The Concierge's control-tag protocol is the headline feature, so it is tested as a contract:
+
 - `[ADD_TO_CART]`, `[ITEMS]`, `[SHOW_CHECKOUT]` parsing and stripping (users never see raw protocol).
 - **Injection resistance:** additions referencing unknown item ids are dropped — the model cannot inject arbitrary ids.
 - Quantity clamping (missing/zero/fractional → sane integers).
@@ -52,6 +53,7 @@ Key parity across all languages, so no locale can silently miss a string.
 
 **Component + accessibility** (`src/components/StallLogin.test.tsx`)
 Rendered with React Testing Library and queried **by role/label** so the tests double as accessibility assertions:
+
 - `axe` scan asserts **zero violations**.
 - Fields are reachable via their accessible names (proves `<label htmlFor>` wiring).
 - Password toggle exposes an accessible name and flips the input type.
