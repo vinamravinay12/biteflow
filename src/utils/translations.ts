@@ -1,9 +1,9 @@
 // Common strings for localization support across the BiteFlow platform.
 // Customer Portal supports: English (en), Spanish (es), French (fr), German (de), Italian (it), Portuguese (pt), Dutch (nl), Arabic (ar)
-// Food Kiosk Dashboard supports: English (en), Spanish (es), Dutch (nl), Arabic (ar)
+// Food Kiosk Dashboard supports: English (en), Spanish (es)
 
 export type LanguageCode = 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ar';
-export type KioskLanguageCode = 'en' | 'es' | 'nl' | 'ar';
+export type KioskLanguageCode = 'en' | 'es';
 
 export const CUSTOMER_LOCALES: Record<LanguageCode, { name: string; flag: string }> = {
   en: { name: 'English', flag: '🇺🇸' },
@@ -18,9 +18,7 @@ export const CUSTOMER_LOCALES: Record<LanguageCode, { name: string; flag: string
 
 export const KIOSK_LOCALES: Record<KioskLanguageCode, { name: string; flag: string }> = {
   en: { name: 'English', flag: '🇺🇸' },
-  es: { name: 'Español', flag: '🇪🇸' },
-  nl: { name: 'Nederlands', flag: '🇳🇱' },
-  ar: { name: 'العربية', flag: '🇸🇦' }
+  es: { name: 'Español', flag: '🇪🇸' }
 };
 
 export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
@@ -626,7 +624,7 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
   }
 };
 
-export const KIOSK_TRANSLATIONS: Record<KioskLanguageCode, Record<string, string>> = {
+export const KIOSK_TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {
     ordersTab: "Orders Queue",
     menuTab: "Menu Management",
