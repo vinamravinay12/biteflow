@@ -5,7 +5,7 @@ import { FIFA_CITIES } from '../data/mockData';
 import { encryptText, verifyHash, timingSafeEqual } from '../utils/crypto';
 import { ADMIN_USERNAME, ADMIN_PASSWORD_HASH } from '../utils/constants';
 import { useDocumentLanguage } from '../utils/useDocumentLanguage';
-import { ADMIN_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
+import { ADMIN_TRANSLATIONS } from '../utils/translations';
 import { 
   Store, Plus, Lock, Key, Eye, EyeOff, Trash2, 
   Check, RefreshCw, BarChart, UserCheck, AlertCircle, LogOut,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export const SuperAdminPortal: React.FC = () => {
-  const [language, setLanguage] = useState<KioskLanguageCode>('en');
+  const language = 'en';
   useDocumentLanguage(language);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(
     localStorage.getItem('biteflow_super_admin_logged_in') === 'true'
@@ -371,24 +371,7 @@ export const SuperAdminPortal: React.FC = () => {
       <div style={{ maxWidth: '480px', margin: '4rem auto 2rem', padding: '1.5rem' }}>
         <div className="glass-panel" style={{ padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', position: 'relative' }}>
           
-          {/* Language Selector in top right */}
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(3,7,18,0.4)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.3rem 0.5rem' }}>
-              <span style={{ fontSize: '0.8rem' }}>🌐</span>
-              <select
-                value={language}
-                aria-label="Select language"
-                onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
-                style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.75rem', cursor: 'pointer' }}
-              >
-                {Object.entries(KIOSK_LOCALES).map(([code, loc]) => (
-                  <option key={code} value={code} style={{ color: 'black' }}>
-                    {loc.flag} {loc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+
 
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '0.5rem' }}>🛡️</span>
@@ -483,22 +466,7 @@ export const SuperAdminPortal: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {/* Admin Language Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '0.4rem 0.6rem' }}>
-            <span style={{ fontSize: '0.9rem' }}>🌐</span>
-            <select
-              value={language}
-              aria-label="Select language"
-              onChange={(e) => setLanguage(e.target.value as KioskLanguageCode)}
-              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', cursor: 'pointer' }}
-            >
-              {Object.entries(KIOSK_LOCALES).map(([code, loc]) => (
-                <option key={code} value={code} style={{ color: 'black' }}>
-                  {loc.flag} {loc.name}
-                </option>
-              ))}
-            </select>
-          </div>
+
 
           <button onClick={loadData} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <RefreshCw size={14} /> {ADMIN_TRANSLATIONS[language].refreshDirectory}
