@@ -1881,6 +1881,48 @@ Rules:
                         ))}
                       </select>
                     </div>
+
+                    {/* Cart toggle button in visual menu */}
+                    <button
+                      onClick={() => setShowCart(!showCart)}
+                      className="btn"
+                      aria-label="Toggle shopping cart"
+                      style={{ 
+                        position: 'relative',
+                        padding: '0.6rem 1.25rem', 
+                        borderRadius: '12px', 
+                        border: cart.length > 0 ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)', 
+                        background: cart.length > 0 ? 'rgba(6, 182, 212, 0.1)' : 'rgba(255,255,255,0.03)', 
+                        color: cart.length > 0 ? 'var(--accent-cyan)' : 'white', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s ease',
+                        minWidth: '100px'
+                      }}
+                    >
+                      <ShoppingBag size={18} />
+                      <span>{USER_TRANSLATIONS[language].cart || 'Cart'}</span>
+                      {cart.length > 0 && (
+                        <span style={{ 
+                          background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
+                          color: 'white', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 800, 
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '9999px',
+                          boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {cart.reduce((sum, c) => sum + c.quantity, 0)}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
                   {/* Category pills */}
