@@ -28,10 +28,10 @@ export default defineConfig({
       // whose fallback paths are tested but whose SDK passthroughs are not.
       // The floor is deliberately the honest figure, not a flattering one.
       thresholds: {
-        lines: 40,
-        statements: 40,
-        functions: 45,
-        branches: 40,
+        lines: 65,
+        statements: 65,
+        functions: 80,
+        branches: 68,
         'src/utils/aiActions.ts': { lines: 100, statements: 95, branches: 90 },
         'src/utils/cart.ts': { lines: 100, statements: 100, branches: 85 },
         'src/utils/crypto.ts': { lines: 100, statements: 100, branches: 85 },

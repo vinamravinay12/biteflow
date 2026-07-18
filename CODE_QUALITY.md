@@ -12,7 +12,7 @@ npm run verify   # lint → typecheck → test:coverage → build
 | :--------------------------------- | :---------------------- | :------------------- |
 | Lint (react, typescript, jsx-a11y) | `npm run lint`          | 0 errors, 0 warnings |
 | Types (strict mode)                | `npm run typecheck`     | 0 errors             |
-| Tests (coverage-enforced)          | `npm run test:coverage` | 65 passing           |
+| Tests (coverage-enforced)          | `npm run test:coverage` | 119 passing          |
 | Production build                   | `npm run build`         | passing              |
 
 Coverage is enforced in two tiers (`vite.config.ts`). The pure domain modules that
@@ -20,16 +20,20 @@ carry the business rules are held at **100% lines** and fail the build below it:
 
 | Module                                        | Lines | Branches |
 | :-------------------------------------------- | :---: | :------: |
-| `aiActions.ts` — AI action parsing & safety   | 100%  |   91%    |
+| `aiActions.ts` — AI action parsing & safety   | 100%  |   99%    |
 | `cart.ts` — cart & multi-kiosk money math     | 100%  |   86%    |
 | `crypto.ts` — AES-GCM & admin auth hashing    | 100%  |   88%    |
 | `useDocumentLanguage.ts` — lang/dir a11y hook | 100%  |   75%    |
 
-The **global floor is 40%**, which is the honest project-wide figure. It is dragged
-down by `database.ts` (~19%), whose LocalStorage fallback logic is tested but whose
-Firestore SDK passthroughs are not. That file is deliberately **included** in the
-report rather than excluded — excluding it would inflate the headline number instead
-of reflecting reality.
+Project-wide the enforced floor is **65% lines / 80% functions / 68% branches**, and
+the current figures are **67.7% lines, 84.3% functions, 71.8% branches**.
+
+`database.ts` sits at ~55%: its entire LocalStorage-sandbox surface is tested
+(stall/menu/order/match CRUD, wallet arithmetic, session helpers), while the
+mirrored Firestore SDK passthroughs are not — those are thin `setDoc`/`getDocs`
+wrappers exercised through the running app. The file is deliberately **included**
+in the report rather than excluded; excluding it would inflate the headline number
+instead of reflecting reality.
 
 ## 2. Architecture — pure logic separated from UI
 
