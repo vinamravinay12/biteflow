@@ -2041,7 +2041,7 @@ Rules:
                                   className="btn btn-primary" 
                                   style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
                                 >
-                                  <Plus size={14} /> Add to Cart
+                                  <Plus size={14} /> {USER_TRANSLATIONS[language].addToCartButton}
                                 </button>
                               );
                             })() : (

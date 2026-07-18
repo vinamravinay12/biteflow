@@ -141,7 +141,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Placed on",
     noDishesFoundHeader: "No dishes found",
     tryRefiningSearchDesc: "Try refining your search text or removing the filters.",
-    outOfStockLabel: "Out of Stock"
+    outOfStockLabel: "Out of Stock",
+    addToCartButton: "Add to Cart"
   },
   es: {
     title: "BiteFlow Patio de Comidas",
@@ -262,7 +263,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Realizado el",
     noDishesFoundHeader: "No se encontraron platos",
     tryRefiningSearchDesc: "Intente refinar su texto de búsqueda o eliminar los filtros.",
-    outOfStockLabel: "Agotado"
+    outOfStockLabel: "Agotado",
+    addToCartButton: "Agregar al Carrito"
   },
   fr: {
     title: "BiteFlow Espace Restauration",
@@ -383,7 +385,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Passée le",
     noDishesFoundHeader: "Aucun plat trouvé",
     tryRefiningSearchDesc: "Essayez d'affiner votre texte de recherche ou de supprimer les filtres.",
-    outOfStockLabel: "Rupture de Stock"
+    outOfStockLabel: "Rupture de Stock",
+    addToCartButton: "Ajouter au Panier"
   },
   de: {
     title: "BiteFlow Food-Court",
@@ -504,7 +507,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Aufgegeben am",
     noDishesFoundHeader: "Keine Gerichte gefunden",
     tryRefiningSearchDesc: "Versuchen Sie, Ihren Suchtext zu verfeinern oder die Filter zu entfernen.",
-    outOfStockLabel: "Ausverkauft"
+    outOfStockLabel: "Ausverkauft",
+    addToCartButton: "In den Warenkorb"
   },
   it: {
     title: "BiteFlow Area Ristorazione",
@@ -625,7 +629,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Effettuato il",
     noDishesFoundHeader: "Nessun piatto trovato",
     tryRefiningSearchDesc: "Prova a perfezionare il testo della ricerca o a rimuovere i filtri.",
-    outOfStockLabel: "Non Disponibile"
+    outOfStockLabel: "Non Disponibile",
+    addToCartButton: "Aggiungi al Carrello"
   },
   pt: {
     title: "BiteFlow Praça de Alimentação",
@@ -746,7 +751,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Feito em",
     noDishesFoundHeader: "Nenhum prato encontrado",
     tryRefiningSearchDesc: "Tente refinar seu texto de busca ou remover os filtros.",
-    outOfStockLabel: "Esgotado"
+    outOfStockLabel: "Esgotado",
+    addToCartButton: "Adicionar ao Carrinho"
   },
   nl: {
     title: "BiteFlow Food Court",
@@ -867,7 +873,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "Geplaatst op",
     noDishesFoundHeader: "Geen gerechten gevonden",
     tryRefiningSearchDesc: "Probeer je zoektekst te verfijnen of de filters te verwijderen.",
-    outOfStockLabel: "Niet op voorraad"
+    outOfStockLabel: "Niet op voorraad",
+    addToCartButton: "In winkelwagen"
   },
   ar: {
     title: "ركن طعام BiteFlow",
@@ -988,7 +995,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     placedOnLabel: "تم تقديمه في",
     noDishesFoundHeader: "لم يتم العثور على أطباق",
     tryRefiningSearchDesc: "جرّب تحسين نص البحث أو إزالة عوامل التصفية.",
-    outOfStockLabel: "نفذت الكمية"
+    outOfStockLabel: "نفذت الكمية",
+    addToCartButton: "أضف إلى السلة"
   }
 };
 
