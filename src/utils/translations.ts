@@ -95,7 +95,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Venue",
     seatingNotSet: "Seating not set (enter in cart before checkout)",
     changeGame: "Change Game",
-    askLanguagePromptDesc: "Ask in Spanish, Portuguese, French, Italian, German, Dutch, Arabic, or English!"
+    askLanguagePromptDesc: "Ask in Spanish, Portuguese, French, Italian, German, Dutch, Arabic, or English!",
+    walletCardLabel: "Your Wallet",
+    backToMenuButton: "Back to Menu",
+    showVisualGridButton: "Browse Visual Grid",
+    showAiChatOnlyButton: "Show AI Chat Only",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "Simulated AI",
+    allCategoriesTab: "All categories",
+    allFoodStallsOption: "All Food Stalls",
+    orderTrackingConsoleHeader: "Order Tracking Console",
+    placedOnLabel: "Placed on",
+    noDishesFoundHeader: "No dishes found",
+    tryRefiningSearchDesc: "Try refining your search text or removing the filters."
   },
   es: {
     title: "BiteFlow Patio de Comidas",
@@ -170,7 +182,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Lugar",
     seatingNotSet: "Asiento no establecido (ingresar en el carrito antes de pagar)",
     changeGame: "Cambiar Partido",
-    askLanguagePromptDesc: "¡Pregunta en español, portugués, francés, italiano o inglés!"
+    askLanguagePromptDesc: "¡Pregunta en español, portugués, francés, italiano o inglés!",
+    walletCardLabel: "Tu Billetera",
+    backToMenuButton: "Volver al Menú",
+    showVisualGridButton: "Ver Cuadrícula Visual",
+    showAiChatOnlyButton: "Mostrar Solo Chat IA",
+    liveGeminiBadge: "Gemini 2.5 Flash en Vivo",
+    simulatedAiBadge: "IA Simulada",
+    allCategoriesTab: "Todas las categorías",
+    allFoodStallsOption: "Todos los Puestos",
+    orderTrackingConsoleHeader: "Consola de Seguimiento de Pedidos",
+    placedOnLabel: "Realizado el",
+    noDishesFoundHeader: "No se encontraron platos",
+    tryRefiningSearchDesc: "Intente refinar su texto de búsqueda o eliminar los filtros."
   },
   fr: {
     title: "BiteFlow Espace Restauration",
@@ -245,7 +269,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Lieu",
     seatingNotSet: "Siège non configuré (saisir dans le panier avant de payer)",
     changeGame: "Changer de Match",
-    askLanguagePromptDesc: "Demandez en espagnol, portugais, français, italien ou anglais !"
+    askLanguagePromptDesc: "Demandez en espagnol, portugais, français, italien ou anglais !",
+    walletCardLabel: "Votre Portefeuille",
+    backToMenuButton: "Retour au Menu",
+    showVisualGridButton: "Parcourir la Grille Visuelle",
+    showAiChatOnlyButton: "Afficher Uniquement le Chat IA",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "IA Simulée",
+    allCategoriesTab: "Toutes les catégories",
+    allFoodStallsOption: "Tous les Stands",
+    orderTrackingConsoleHeader: "Console de Suivi des Commandes",
+    placedOnLabel: "Passée le",
+    noDishesFoundHeader: "Aucun plat trouvé",
+    tryRefiningSearchDesc: "Essayez d'affiner votre texte de recherche ou de supprimer les filtres."
   },
   de: {
     title: "BiteFlow Food-Court",
@@ -320,7 +356,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Ort",
     seatingNotSet: "Sitzplatz nicht festgelegt (vor dem Bezahlen im Warenkorb eingeben)",
     changeGame: "Spiel wechseln",
-    askLanguagePromptDesc: "Fragen Sie auf Spanisch, Portugiesisch, Französisch, Italienisch oder Englisch!"
+    askLanguagePromptDesc: "Fragen Sie auf Spanisch, Portugiesisch, Französisch, Italienisch oder Englisch!",
+    walletCardLabel: "Ihre Brieftasche",
+    backToMenuButton: "Zurück zum Menü",
+    showVisualGridButton: "Visuelles Raster Durchsuchen",
+    showAiChatOnlyButton: "Nur KI-Chat Anzeigen",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "Simulierte KI",
+    allCategoriesTab: "Alle Kategorien",
+    allFoodStallsOption: "Alle Essensstände",
+    orderTrackingConsoleHeader: "Konsole zur Bestellverfolgung",
+    placedOnLabel: "Aufgegeben am",
+    noDishesFoundHeader: "Keine Gerichte gefunden",
+    tryRefiningSearchDesc: "Versuchen Sie, Ihren Suchtext zu verfeinern oder die Filter zu entfernen."
   },
   it: {
     title: "BiteFlow Area Ristorazione",
@@ -395,7 +443,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Luogo",
     seatingNotSet: "Posto non impostato (inserisci nel carrello prima del pagamento)",
     changeGame: "Cambia Partita",
-    askLanguagePromptDesc: "Chiedi in spagnolo, portoghese, francese, italiano o inglese!"
+    askLanguagePromptDesc: "Chiedi in spagnolo, portoghese, francese, italiano o inglese!",
+    walletCardLabel: "Il Tuo Portafoglio",
+    backToMenuButton: "Torna al Menu",
+    showVisualGridButton: "Sfoglia Griglia Visiva",
+    showAiChatOnlyButton: "Mostra Solo Chat IA",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "IA Simulata",
+    allCategoriesTab: "Tutte le categorie",
+    allFoodStallsOption: "Tutti i Chioschi",
+    orderTrackingConsoleHeader: "Console di Monitoraggio Ordini",
+    placedOnLabel: "Effettuato il",
+    noDishesFoundHeader: "Nessun piatto trovato",
+    tryRefiningSearchDesc: "Prova a perfezionare il testo della ricerca o a rimuovere i filtri."
   },
   pt: {
     title: "BiteFlow Praça de Alimentação",
@@ -470,7 +530,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Local",
     seatingNotSet: "Assento não definido (insira no carrinho antes de pagar)",
     changeGame: "Alterar Jogo",
-    askLanguagePromptDesc: "Pergunte em espanhol, portugues, francês, italiano ou inglês!"
+    askLanguagePromptDesc: "Pergunte em espanhol, portugues, francês, italiano ou inglês!",
+    walletCardLabel: "Sua Carteira",
+    backToMenuButton: "Voltar ao Menu",
+    showVisualGridButton: "Ver Grade Visual",
+    showAiChatOnlyButton: "Mostrar Apenas Chat de IA",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "IA Simulada",
+    allCategoriesTab: "Todas as categorias",
+    allFoodStallsOption: "Todas as Barracas",
+    orderTrackingConsoleHeader: "Console de Rastreamento de Pedidos",
+    placedOnLabel: "Feito em",
+    noDishesFoundHeader: "Nenhum prato encontrado",
+    tryRefiningSearchDesc: "Tente refinar seu texto de busca ou remover os filtros."
   },
   nl: {
     title: "BiteFlow Food Court",
@@ -545,7 +617,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "Locatie",
     seatingNotSet: "Stoel niet ingesteld (voer in bij winkelwagen)",
     changeGame: "Wijzig wedstrijd",
-    askLanguagePromptDesc: "Stel uw vraag in het Spaans, Portugees, Frans, Italiaans, Duits, Nederlands, Arabisch of Engels!"
+    askLanguagePromptDesc: "Stel uw vraag in het Spaans, Portugees, Frans, Italiaans, Duits, Nederlands, Arabisch of Engels!",
+    walletCardLabel: "Uw Portemonnee",
+    backToMenuButton: "Terug naar Menu",
+    showVisualGridButton: "Visueel Raster Bekijken",
+    showAiChatOnlyButton: "Alleen KI-chat Weergeven",
+    liveGeminiBadge: "Live Gemini 2.5 Flash",
+    simulatedAiBadge: "Gesimuleerde KI",
+    allCategoriesTab: "Alle categorieën",
+    allFoodStallsOption: "Alle Eetkraampjes",
+    orderTrackingConsoleHeader: "Bestellingsvolgconsole",
+    placedOnLabel: "Geplaatst op",
+    noDishesFoundHeader: "Geen gerechten gevonden",
+    tryRefiningSearchDesc: "Probeer je zoektekst te verfijnen of de filters te verwijderen."
   },
   ar: {
     title: "ركن طعام BiteFlow",
@@ -620,7 +704,19 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     venue: "الموقع",
     seatingNotSet: "المقعد غير محدد (أدخله في السلة قبل الدفع)",
     changeGame: "تغيير المباراة",
-    askLanguagePromptDesc: "اسأل بالإسبانية، البرتغالية، الفرنسية، الإيطالية، الألمانية، الهولندية، العربية أو الإنجليزية!"
+    askLanguagePromptDesc: "اسأل بالإسبانية، البرتغالية، الفرنسية، الإيطالية، الألمانية، الهولندية، العربية أو الإنجليزية!",
+    walletCardLabel: "محفظتك",
+    backToMenuButton: "العودة إلى القائمة",
+    showVisualGridButton: "تصفح الشبكة المرئية",
+    showAiChatOnlyButton: "إظهار دردشة الذكاء الاصطناعي فقط",
+    liveGeminiBadge: "Gemini 2.5 Flash مباشر",
+    simulatedAiBadge: "ذكاء اصطناعي محاكى",
+    allCategoriesTab: "جميع الفئات",
+    allFoodStallsOption: "جميع أكشاك الطعام",
+    orderTrackingConsoleHeader: "لوحة تتبع الطلبات",
+    placedOnLabel: "تم تقديمه في",
+    noDishesFoundHeader: "لم يتم العثور على أطباق",
+    tryRefiningSearchDesc: "جرّب تحسين نص البحث أو إزالة عوامل التصفية."
   }
 };
 

@@ -1348,7 +1348,7 @@ Rules:
             <Wallet size={20} />
           </div>
           <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Wallet</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{USER_TRANSLATIONS[language].walletCardLabel}</span>
             <p className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-green)' }}>
               ${wallet.balance.toFixed(2)}
             </p>
@@ -1495,8 +1495,8 @@ Rules:
               <div>
                 <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                   <Sparkles size={18} color="var(--accent-cyan)" /> BiteFlow AI Concierge
-                  <span style={{ fontSize: '0.7rem', color: aiEnabled ? 'var(--accent-green)' : 'var(--accent-orange)', background: aiEnabled ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: aiEnabled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
-                    {aiEnabled ? '🤖 Live Gemini 2.5 Flash' : '⚡ Simulated AI'}
+                  <span style={{ fontSize: '0.75rem', color: aiEnabled ? 'var(--accent-green)' : 'var(--accent-orange)', background: aiEnabled ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: aiEnabled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)' }}>
+                    {aiEnabled ? `🤖 ${USER_TRANSLATIONS[language].liveGeminiBadge}` : `⚡ ${USER_TRANSLATIONS[language].simulatedAiBadge}`}
                   </span>
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.2rem 0 0' }}>
@@ -1509,7 +1509,7 @@ Rules:
                 className="btn btn-secondary"
                 style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
               >
-                {showVisualMenu ? '💬 Show AI Chat Only' : '🍽️ Browse Visual Grid'}
+                {showVisualMenu ? `💬 ${USER_TRANSLATIONS[language].showAiChatOnlyButton}` : `🍽️ ${USER_TRANSLATIONS[language].showVisualGridButton}`}
               </button>
             </div>
 
@@ -1878,7 +1878,7 @@ Rules:
                         value={selectedStallId}
                         onChange={(e) => setSelectedStallId(e.target.value)}
                       >
-                        <option value="all">🏪 All Food Stalls</option>
+                        <option value="all">🏪 {USER_TRANSLATIONS[language].allFoodStallsOption}</option>
                         {availableStalls.map(s => (
                           <option key={s.id} value={s.id}>{s.logoUrl} {s.name}</option>
                         ))}
@@ -1900,7 +1900,7 @@ Rules:
                           borderRadius: '20px'
                         }}
                       >
-                        {cat === 'all' ? '🍽️ All categories' : cat}
+                        {cat === 'all' ? `🍽️ ${USER_TRANSLATIONS[language].allCategoriesTab}` : cat}
                       </button>
                     ))}
                   </div>
@@ -1910,9 +1910,9 @@ Rules:
                 {filteredMenuItems.length === 0 ? (
                   <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                     <Info size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>No dishes found</h3>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>{USER_TRANSLATIONS[language].noDishesFoundHeader}</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      Try refining your search text or removing the filters.
+                      {USER_TRANSLATIONS[language].tryRefiningSearchDesc}
                     </p>
                   </div>
                 ) : (
@@ -1996,14 +1996,14 @@ Rules:
           <div className="glass-panel" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
               <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <Clock size={22} color="var(--accent-cyan)" /> Order Tracking Console
+                <Clock size={22} color="var(--accent-cyan)" /> {USER_TRANSLATIONS[language].orderTrackingConsoleHeader}
               </h2>
               <button 
                 onClick={() => setActiveTab('browse')}
                 className="btn btn-secondary"
                 style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', borderRadius: '8px' }}
               >
-                🍕 Back to Menu
+                🍕 {USER_TRANSLATIONS[language].backToMenuButton}
               </button>
             </div>
 
@@ -2039,7 +2039,7 @@ Rules:
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({order.id})</span>
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                            {language === 'es' ? 'Realizado el' : language === 'fr' ? 'Passée le' : language === 'de' ? 'Aufgegeben am' : language === 'it' ? 'Effettuato il' : language === 'pt' ? 'Feito em' : language === 'nl' ? 'Geplaatst op' : language === 'ar' ? 'تم تقديمه في' : 'Placed on'} {new Date(order.orderTime).toLocaleString()}
+                            {USER_TRANSLATIONS[language].placedOnLabel} {new Date(order.orderTime).toLocaleString()}
                             {order.stand && order.seatNumber && (
                               <span style={{ marginLeft: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
                                 📍 {order.stand}, {order.seatNumber}
