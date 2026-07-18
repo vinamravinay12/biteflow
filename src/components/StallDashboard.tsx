@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../utils/database';
 import type { StallSession, MenuItem, OrderStatus, OrderLineItem, DashboardStats } from '../types';
 import { KIOSK_TRANSLATIONS, KIOSK_LOCALES, type KioskLanguageCode } from '../utils/translations';
@@ -172,7 +172,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
   ];
 
   // Load data
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     // Load menu items for this stall
     const stallItems = await db.getMenuItems(stall.id);
     setMenuItems(stallItems);
@@ -213,17 +213,14 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
       completedOrdersCount: completed.length,
       cancelledOrdersCount: cancelled.length
     });
-  };
+  }, [stall.id]);
 
-  // `loadData` is a stable closure over `stall`; the effect intentionally keys
-  // only on stall.id and polls on an interval, so exhaustive-deps is suppressed.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadData();
     // Set up auto-refresh timer to poll for new orders placed in Customer view.
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
-  }, [stall.id]);
+  }, [loadData]);
 
   // Order status actions
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus, reason?: string) => {

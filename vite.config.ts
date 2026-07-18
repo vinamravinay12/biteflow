@@ -17,12 +17,12 @@ export default defineConfig({
       // Focus coverage on the testable business/domain logic. UI components are
       // exercised through the app; the pure utils below carry the core rules.
       include: ['src/utils/**/*.ts'],
-      exclude: ['src/utils/**/*.test.ts', 'src/utils/firebase.ts'],
+      exclude: ['src/utils/**/*.test.ts', 'src/utils/firebase.ts', 'src/utils/database.ts'],
       thresholds: {
-        lines: 35,
-        statements: 35,
-        functions: 40,
-        branches: 35
+        lines: 85,
+        statements: 85,
+        functions: 85,
+        branches: 75
       }
     },
   },

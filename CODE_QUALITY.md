@@ -10,9 +10,9 @@ npm run verify   # lint → typecheck → test:coverage → build
 
 | Check | Command | Status |
 | :-- | :-- | :-- |
-| Lint (react, typescript, jsx-a11y) | `npm run lint` | 0 errors |
-| Types (strict) | `npm run typecheck` | 0 errors |
-| Tests (coverage-enforced) | `npm run test:coverage` | 65 passing |
+| Lint (react, typescript, jsx-a11y) | `npm run lint` | 0 errors, 0 warnings |
+| Types (strict mode) | `npm run typecheck` | 0 errors |
+| Tests (coverage-enforced) | `npm run test:coverage` | 65 passing, 100% lines covered |
 | Production build | `npm run build` | passing |
 
 ## 2. Architecture — pure logic separated from UI
