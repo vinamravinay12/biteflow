@@ -1,0 +1,14 @@
+# Normalize line endings so diffs stay clean across platforms.
+* text=auto eol=lf
+
+# Binary assets — never diff or normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Lockfiles are generated; collapse them in PR diffs.
+package-lock.json linguist-generated=true -diff
+functions/package-lock.json linguist-generated=true -diff

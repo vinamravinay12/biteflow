@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# The merchant and platform-admin consoles are credential-gated operational
+# tooling, not public content — keep them out of search results.
+Disallow: /admin
+Disallow: /foodkiosk
+
+Sitemap: https://biteflow-6b1f9.web.app/sitemap.xml

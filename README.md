@@ -103,19 +103,28 @@ npm run build
 
 Detailed engineering documentation lives in dedicated files, each with evidence:
 
-| Doc                                  | Covers                                                                                    |
-| :----------------------------------- | :---------------------------------------------------------------------------------------- |
-| [SECURITY.md](SECURITY.md)           | Threat model, server-side key handling, auth, Firestore rules, AI hardening, HTTP headers |
-| [TESTING.md](TESTING.md)             | Test strategy, coverage numbers, automated a11y testing, CI                               |
-| [ACCESSIBILITY.md](ACCESSIBILITY.md) | WCAG 2.1 AA approach, keyboard/RTL/live regions, automated enforcement                    |
-| [EFFICIENCY.md](EFFICIENCY.md)       | Bundle analysis, code splitting, network behaviour                                        |
-| [CODE_QUALITY.md](CODE_QUALITY.md)   | Architecture, type safety, quality gate                                                   |
+| Doc                                                      | Covers                                                                                    |
+| :------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| [SECURITY.md](SECURITY.md)                               | Threat model, server-side key handling, auth, Firestore rules, AI hardening, HTTP headers |
+| [TESTING.md](TESTING.md)                                 | Test strategy, coverage numbers, automated a11y testing, CI                               |
+| [ACCESSIBILITY.md](ACCESSIBILITY.md)                     | WCAG 2.1 AA approach, keyboard/RTL/live regions, automated enforcement                    |
+| [EFFICIENCY.md](EFFICIENCY.md)                           | Lighthouse scores, bundle analysis, code splitting, network behaviour                     |
+| [CODE_QUALITY.md](CODE_QUALITY.md)                       | Architecture, type safety, quality gate                                                   |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)             | System shape, layering, identity model, AI request flow                                   |
+| [docs/decisions.md](docs/decisions.md)                   | Architecture Decision Records — what was chosen, why, and what it cost                    |
+| [docs/lighthouse-results.md](docs/lighthouse-results.md) | Measured Lighthouse audit of the live deployment                                          |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                       | Setup, conventions, coverage expectations                                                 |
+| [CHANGELOG.md](CHANGELOG.md)                             | Notable changes                                                                           |
 
 Run the full quality gate with a single command:
 
 ```bash
-npm run verify   # lint → typecheck → test:coverage → build
+npm run verify   # format → lint → typecheck → test:coverage → build
 ```
+
+**Measured Lighthouse** (live deployment): Performance **95** · Accessibility
+**100** · Best Practices **100** · SEO **100** (desktop); 0 ms Total Blocking
+Time, 0 Cumulative Layout Shift.
 
 ---
 

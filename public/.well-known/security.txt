@@ -1,0 +1,5 @@
+# BiteFlow — coordinated vulnerability disclosure (RFC 9116)
+Contact: mailto:vinamra.vinay235@gmail.com
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://biteflow-6b1f9.web.app/.well-known/security.txt

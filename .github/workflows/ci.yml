@@ -14,10 +14,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the secret scan can inspect every commit, not just
+          # the tip — a key leaked and later removed is still a leaked key.
+          fetch-depth: 0
+
+      - name: Scan git history for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Matches the Node 22 runtime the Cloud Function targets.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies

@@ -342,6 +342,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  // WCAG 2.5.8: interactive targets need >=24x24 CSS px.
+                  minWidth: '24px',
+                  minHeight: '24px',
                 }}
               >
                 {showAuthPassword ? (
@@ -415,6 +419,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    // WCAG 2.5.8: interactive targets need >=24x24 CSS px.
+                    minWidth: '24px',
+                    minHeight: '24px',
                   }}
                 >
                   {showConfirmPassword ? (

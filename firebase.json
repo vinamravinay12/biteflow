@@ -8,7 +8,8 @@
   },
   "hosting": {
     "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "comment": "`**/.*` would also exclude .well-known, so it is re-included explicitly — RFC 9116 requires security.txt to be served from there.",
+    "ignore": ["firebase.json", "**/.*", "!**/.well-known/**", "**/node_modules/**"],
     "headers": [
       {
         "comment": "Default for every path (all SPA routes resolve to index.html): never cache the HTML entry point. A stale index.html references hashed chunk filenames that no longer exist after a deploy, which breaks lazy-loaded routes. The /assets/** rule below overrides this for fingerprinted files.",

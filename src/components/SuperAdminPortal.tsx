@@ -486,6 +486,10 @@ export const SuperAdminPortal: React.FC = () => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    // WCAG 2.5.8: interactive targets need >=24x24 CSS px.
+                    minWidth: '24px',
+                    minHeight: '24px',
                   }}
                 >
                   {showAdminPassword ? (
