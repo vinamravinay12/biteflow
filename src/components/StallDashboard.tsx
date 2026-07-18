@@ -883,23 +883,23 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700 }}>Menu Offerings</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Add or edit items details and manage stock availability.</p>
+              <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{KIOSK_TRANSLATIONS[language].menuOfferings}</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{KIOSK_TRANSLATIONS[language].menuOfferingsDesc}</p>
             </div>
             <button onClick={() => openMenuModal(null)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Plus size={16} /> Add Food Item
+              <Plus size={16} /> {KIOSK_TRANSLATIONS[language].addItem}
             </button>
           </div>
 
           {menuItems.length === 0 ? (
             <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center', borderStyle: 'dashed' }}>
-              <Store size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>Your menu is empty</h3>
+              <Store size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} aria-hidden="true" />
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{KIOSK_TRANSLATIONS[language].menuEmpty}</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                Add delicious food items to your menu so customers can order them.
+                {KIOSK_TRANSLATIONS[language].menuEmptyDesc}
               </p>
               <button onClick={() => openMenuModal(null)} className="btn btn-primary">
-                <Plus size={16} /> Add Your First Item
+                <Plus size={16} /> {KIOSK_TRANSLATIONS[language].addFirstItem}
               </button>
             </div>
           ) : (
@@ -941,7 +941,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                         justifyContent: 'center' 
                       }}>
                         <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
-                          Out of Stock
+                          {KIOSK_TRANSLATIONS[language].outOfStock}
                         </span>
                       </div>
                     )}
@@ -965,7 +965,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
                         <Clock size={12} />
-                        <span>Prep Time: ~{item.prepTime} mins</span>
+                        <span>{KIOSK_TRANSLATIONS[language].prepTimeLabel}{item.prepTime} {KIOSK_TRANSLATIONS[language].minutesSuffix}</span>
                       </div>
 
                       <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -977,7 +977,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             onChange={() => toggleItemAvailability(item)}
                             style={{ cursor: 'pointer', width: '15px', height: '15px', accentColor: 'var(--accent-cyan)' }}
                           />
-                          In Stock
+                          {KIOSK_TRANSLATIONS[language].inStock}
                         </label>
 
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -985,7 +985,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             onClick={() => openMenuModal(item)}
                             className="btn btn-secondary"
                             style={{ padding: '0.4rem', borderRadius: '6px' }}
-                            title="Edit Item"
+                            title={KIOSK_TRANSLATIONS[language].editItemTitle}
                             aria-label={`Edit ${item.name}`}
                           >
                             <Edit size={14} aria-hidden="true" />
@@ -994,7 +994,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                             onClick={() => handleDeleteItem(item.id)}
                             className="btn btn-secondary"
                             style={{ padding: '0.4rem', borderRadius: '6px', color: 'var(--accent-red)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                            title="Delete Item"
+                            title={KIOSK_TRANSLATIONS[language].deleteItemTitle}
                             aria-label={`Delete ${item.name}`}
                           >
                             <Trash2 size={14} aria-hidden="true" />
@@ -1020,7 +1020,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                 <DollarSign size={24} />
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Revenue</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].revenue}</span>
                 <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
                   ${stats.totalRevenue.toFixed(2)}
                 </h3>
@@ -1032,7 +1032,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                 <ShoppingBag size={24} />
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Orders</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].totalOrders}</span>
                 <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
                   {stats.totalOrders}
                 </h3>
@@ -1044,7 +1044,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                 <TrendingUp size={24} />
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Avg. Order Value</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].avgOrderValue}</span>
                 <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
                   ${stats.averageOrderValue.toFixed(2)}
                 </h3>
@@ -1056,7 +1056,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
                 <X size={24} />
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Cancellations</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{KIOSK_TRANSLATIONS[language].cancelledOrders}</span>
                 <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
                   {stats.cancelledOrdersCount}
                 </h3>
@@ -1068,7 +1068,7 @@ export const StallDashboard: React.FC<StallDashboardProps> = ({ stall, onLogout 
             {/* Visual Chart - Pure CSS & SVG Bar Chart */}
             <div className="glass-panel" style={{ padding: '2rem' }}>
               <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <TrendingUp size={18} color="var(--accent-cyan)" /> Hourly Order Frequency (Simulated)
+                <TrendingUp size={18} color="var(--accent-cyan)" /> {KIOSK_TRANSLATIONS[language].hourlyFrequency}
               </h3>
               <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4.5%', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem', paddingBottom: '0.5rem', position: 'relative' }}>
                 {[
