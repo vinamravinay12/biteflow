@@ -107,7 +107,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Order Tracking Console",
     placedOnLabel: "Placed on",
     noDishesFoundHeader: "No dishes found",
-    tryRefiningSearchDesc: "Try refining your search text or removing the filters."
+    tryRefiningSearchDesc: "Try refining your search text or removing the filters.",
+    outOfStockLabel: "Out of Stock"
   },
   es: {
     title: "BiteFlow Patio de Comidas",
@@ -194,7 +195,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Consola de Seguimiento de Pedidos",
     placedOnLabel: "Realizado el",
     noDishesFoundHeader: "No se encontraron platos",
-    tryRefiningSearchDesc: "Intente refinar su texto de búsqueda o eliminar los filtros."
+    tryRefiningSearchDesc: "Intente refinar su texto de búsqueda o eliminar los filtros.",
+    outOfStockLabel: "Agotado"
   },
   fr: {
     title: "BiteFlow Espace Restauration",
@@ -281,7 +283,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Console de Suivi des Commandes",
     placedOnLabel: "Passée le",
     noDishesFoundHeader: "Aucun plat trouvé",
-    tryRefiningSearchDesc: "Essayez d'affiner votre texte de recherche ou de supprimer les filtres."
+    tryRefiningSearchDesc: "Essayez d'affiner votre texte de recherche ou de supprimer les filtres.",
+    outOfStockLabel: "Rupture de Stock"
   },
   de: {
     title: "BiteFlow Food-Court",
@@ -368,7 +371,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Konsole zur Bestellverfolgung",
     placedOnLabel: "Aufgegeben am",
     noDishesFoundHeader: "Keine Gerichte gefunden",
-    tryRefiningSearchDesc: "Versuchen Sie, Ihren Suchtext zu verfeinern oder die Filter zu entfernen."
+    tryRefiningSearchDesc: "Versuchen Sie, Ihren Suchtext zu verfeinern oder die Filter zu entfernen.",
+    outOfStockLabel: "Ausverkauft"
   },
   it: {
     title: "BiteFlow Area Ristorazione",
@@ -455,7 +459,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Console di Monitoraggio Ordini",
     placedOnLabel: "Effettuato il",
     noDishesFoundHeader: "Nessun piatto trovato",
-    tryRefiningSearchDesc: "Prova a perfezionare il testo della ricerca o a rimuovere i filtri."
+    tryRefiningSearchDesc: "Prova a perfezionare il testo della ricerca o a rimuovere i filtri.",
+    outOfStockLabel: "Non Disponibile"
   },
   pt: {
     title: "BiteFlow Praça de Alimentação",
@@ -542,7 +547,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Console de Rastreamento de Pedidos",
     placedOnLabel: "Feito em",
     noDishesFoundHeader: "Nenhum prato encontrado",
-    tryRefiningSearchDesc: "Tente refinar seu texto de busca ou remover os filtros."
+    tryRefiningSearchDesc: "Tente refinar seu texto de busca ou remover os filtros.",
+    outOfStockLabel: "Esgotado"
   },
   nl: {
     title: "BiteFlow Food Court",
@@ -629,7 +635,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "Bestellingsvolgconsole",
     placedOnLabel: "Geplaatst op",
     noDishesFoundHeader: "Geen gerechten gevonden",
-    tryRefiningSearchDesc: "Probeer je zoektekst te verfijnen of de filters te verwijderen."
+    tryRefiningSearchDesc: "Probeer je zoektekst te verfijnen of de filters te verwijderen.",
+    outOfStockLabel: "Niet op voorraad"
   },
   ar: {
     title: "ركن طعام BiteFlow",
@@ -716,7 +723,8 @@ export const USER_TRANSLATIONS: Record<LanguageCode, Record<string, any>> = {
     orderTrackingConsoleHeader: "لوحة تتبع الطلبات",
     placedOnLabel: "تم تقديمه في",
     noDishesFoundHeader: "لم يتم العثور على أطباق",
-    tryRefiningSearchDesc: "جرّب تحسين نص البحث أو إزالة عوامل التصفية."
+    tryRefiningSearchDesc: "جرّب تحسين نص البحث أو إزالة عوامل التصفية.",
+    outOfStockLabel: "نفذت الكمية"
   }
 };
 

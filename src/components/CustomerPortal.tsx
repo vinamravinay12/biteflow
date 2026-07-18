@@ -1961,21 +1961,55 @@ Rules:
                               </span>
                             </div>
 
-                            {item.isAvailable ? (
-                              <button 
-                                onClick={() => addToCart(item)}
-                                className="btn btn-primary" 
-                                style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-                              >
-                                <Plus size={14} /> Add to Cart
-                              </button>
-                            ) : (
+                            {item.isAvailable ? (() => {
+                              const cartEntry = cart.find(c => c.item.id === item.id);
+                              if (cartEntry) {
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.25rem 0.5rem', border: '1px solid var(--border-color)' }}>
+                                    <button
+                                      onClick={() => {
+                                        if (cartEntry.quantity <= 1) {
+                                          removeFromCart(item.id);
+                                        } else {
+                                          updateCartQty(item.id, -1);
+                                        }
+                                      }}
+                                      className="btn btn-secondary"
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                      aria-label="Decrease quantity"
+                                    >
+                                      {cartEntry.quantity <= 1 ? '🗑' : '−'}
+                                    </button>
+                                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>
+                                      {cartEntry.quantity}
+                                    </span>
+                                    <button
+                                      onClick={() => updateCartQty(item.id, 1)}
+                                      className="btn btn-secondary"
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                      aria-label="Increase quantity"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <button 
+                                  onClick={() => addToCart(item)}
+                                  className="btn btn-primary" 
+                                  style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                                >
+                                  <Plus size={14} /> Add to Cart
+                                </button>
+                              );
+                            })() : (
                               <button 
                                 className="btn btn-secondary" 
                                 style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 1rem', cursor: 'not-allowed', color: 'var(--text-muted)' }}
                                 disabled
                               >
-                                Out of Stock
+                                {USER_TRANSLATIONS[language].outOfStockLabel}
                               </button>
                             )}
                           </div>
